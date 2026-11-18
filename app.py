@@ -4758,7 +4758,7 @@ Sans activité, vous allez être déconnecté dans <b id="inactif-sec">60</b> s.
 LOGIN = """{% extends 'base.html' %}{% block bodyclass %}login{% endblock %}{% block content %}
 <div class="login-wrap"><div class="login-card">
 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo ISRA - UPVac">
-<h1>GEStion Vaccination</h1>
+<h1>GESVac</h1>
 <p class="sous">Gestion de stock-Commande-Vente</p>
 <form method="post">
 <label>Utilisateur<input name="username" required autofocus autocomplete="username"></label>
