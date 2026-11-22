@@ -558,6 +558,21 @@ def jour_en_lettres(d):
     return f"{JOURS_FR[d.weekday()].capitalize()} {d.day} {MOIS_LONGS[d.month - 1]} {d.year}"
 
 
+ICONES_PAGES = (("index", "🏠"), ("rapport", "📊"), ("lot", "💉"), ("vaccin", "💉"), ("mouvement", "🔁"),
+                ("inventaire", "📋"), ("article", "🧰"), ("caisse", "🛒"), ("commande", "🧾"), ("vente", "💰"),
+                ("facture", "📄"), ("client", "👥"), ("message", "✉️"), ("referentiel", "🗂️"), ("ref_", "🗂️"),
+                ("utilisateur", "🔐"), ("email", "📧"), ("journal", "🕵️"), ("donnees", "🧪"),
+                ("mon_compte", "👤"), ("mot_de_passe", "🔑"))
+
+
+def icone_page(endpoint):
+    """Icône affichée devant le titre de chaque page, selon la rubrique."""
+    for prefixe, ico in ICONES_PAGES:
+        if (endpoint or "").startswith(prefixe):
+            return ico
+    return "📄"
+
+
 @app.context_processor
 def inject_globals():
     nb = 0
@@ -565,7 +580,7 @@ def inject_globals():
         nb = query("SELECT COUNT(*) AS n FROM messages WHERE destinataire_id=? AND lu=0",
                    (session["user"]["id"],), one=True)["n"]
     return {"nb_non_lus": nb, "peut_gerer": peut_gerer(), "STATUTS": STATUTS,
-            "MOTIFS_SORTIE": MOTIFS_SORTIE, "annee": date.today().year, "jour_fr": jour_en_lettres(date.today()), "devise": DEVISE, "TYPES_DOC": TYPES_DOC,
+            "MOTIFS_SORTIE": MOTIFS_SORTIE, "annee": date.today().year, "ico_page": icone_page(request.endpoint), "jour_fr": jour_en_lettres(date.today()), "devise": DEVISE, "TYPES_DOC": TYPES_DOC,
             "droits": {k: droit(k) for k in DROITS}}
 
 
@@ -801,50 +816,69 @@ def sommet_graduation(v):
     return 10 * mag
 
 
+def _fmt(v):
+    return f"{v:,.0f}".replace(",", " ")
+
+
 def _cadre(labels, haut):
-    """Axes, grille et libellés communs aux deux graphiques ; renvoie (svg_partiel, geometrie)."""
-    G, D, H, B = 52, 14, 18, 36           # marges gauche, droite, haut, bas
-    W, T = 600, 250
+    """Axes, grille et libellés communs aux deux graphiques ; renvoie (svg_partiel, geometrie).
+    Les couleurs viennent de la feuille de style (classes g-*), pour suivre le mode clair / sombre."""
+    G, D, H, B = 58, 16, 26, 38           # marges gauche, droite, haut, bas
+    W, T = 640, 300
     zone_w, zone_h = W - G - D, T - H - B
     out = []
     for i in range(5):
         val = haut * i / 4
         y = H + zone_h - zone_h * i / 4
-        out.append(f'<line x1="{G}" y1="{y:.1f}" x2="{W - D}" y2="{y:.1f}" stroke="#d9e2d3" stroke-width="1"/>')
-        out.append(f'<text x="{G - 8}" y="{y + 4:.1f}" text-anchor="end" font-size="11" fill="#667">{val:,.0f}</text>'.replace(",", " "))
+        tirets = "" if i == 0 else ' stroke-dasharray="4 4"'
+        out.append(f'<line class="g-grille" x1="{G}" y1="{y:.1f}" x2="{W - D}" y2="{y:.1f}" stroke-width="1"{tirets}/>')
+        out.append(f'<text class="g-axe" x="{G - 10}" y="{y + 4:.1f}" text-anchor="end">{_fmt(val)}</text>')
     pas = zone_w / len(labels)
     for i, lab in enumerate(labels):
-        out.append(f'<text x="{G + pas * (i + 0.5):.1f}" y="{T - 14}" text-anchor="middle" font-size="11" fill="#445">{lab}</text>')
+        out.append(f'<text class="g-lib" x="{G + pas * (i + 0.5):.1f}" y="{T - 12}" text-anchor="middle">{lab}</text>')
     return out, (G, H, zone_w, zone_h, pas, W, T)
 
 
-def svg_barres(labels, valeurs, couleur="#498d1e"):
+def _svg(W, T, titre, corps):
+    return Markup(f'<svg class="graph" viewBox="0 0 {W} {T}" role="img" aria-label="{titre}">' + corps + "</svg>")
+
+
+def svg_barres(labels, valeurs, couleur=None):
     haut = sommet_graduation(max(valeurs) if valeurs else 0)
     out, (G, H, zw, zh, pas, W, T) = _cadre(labels, haut)
+    out.insert(0, '<defs><linearGradient id="g-barres" x1="0" y1="0" x2="0" y2="1">'
+                  '<stop offset="0" style="stop-color:var(--g-barre-1)"/><stop offset="1" style="stop-color:var(--g-barre-2)"/>'
+                  '</linearGradient></defs>')
     for i, v in enumerate(valeurs):
         h = zh * v / haut
-        x = G + pas * i + pas * 0.2
-        w = pas * 0.6
-        out.append(f'<rect x="{x:.1f}" y="{H + zh - h:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" fill="{couleur}"><title>{labels[i]} : {v:,.0f}</title></rect>'.replace(",", " "))
+        x = G + pas * i + pas * 0.18
+        w = pas * 0.64
+        out.append(f'<rect class="g-barre" x="{x:.1f}" y="{H + zh - h:.1f}" width="{w:.1f}" height="{h:.1f}" rx="6" fill="url(#g-barres)">'
+                   f'<title>{labels[i]} : {_fmt(v)}</title></rect>')
         if v:
-            out.append(f'<text x="{x + w / 2:.1f}" y="{H + zh - h - 5:.1f}" text-anchor="middle" font-size="11" font-weight="bold" fill="#2f6b14">{v:,.0f}</text>'.replace(",", " "))
+            out.append(f'<text class="g-val" x="{x + w / 2:.1f}" y="{H + zh - h - 7:.1f}" text-anchor="middle">{_fmt(v)}</text>')
     if not any(valeurs):
-        out.append(f'<text x="{W / 2}" y="{H + zh / 2}" text-anchor="middle" font-size="13" fill="#889">Aucune donnée sur la période</text>')
-    return Markup(f'<svg viewBox="0 0 {W} {T}" role="img" style="width:100%;height:auto">' + "".join(out) + "</svg>")
+        out.append(f'<text class="g-vide" x="{W / 2}" y="{H + zh / 2}" text-anchor="middle">Aucune donnée sur la période</text>')
+    return _svg(W, T, "Doses vendues par mois", "".join(out))
 
 
-def svg_ligne(labels, valeurs, couleur="#2b78b8"):
+def svg_ligne(labels, valeurs, couleur=None):
     haut = sommet_graduation(max(valeurs) if valeurs else 0)
     out, (G, H, zw, zh, pas, W, T) = _cadre(labels, haut)
+    out.insert(0, '<defs><linearGradient id="g-aire" x1="0" y1="0" x2="0" y2="1">'
+                  '<stop offset="0" style="stop-color:var(--g-ligne);stop-opacity:.32"/>'
+                  '<stop offset="1" style="stop-color:var(--g-ligne);stop-opacity:0"/></linearGradient></defs>')
     pts = [(G + pas * (i + 0.5), H + zh - zh * v / haut) for i, v in enumerate(valeurs)]
     if pts:
         aire = f"{pts[0][0]:.1f},{H + zh} " + " ".join(f"{x:.1f},{y:.1f}" for x, y in pts) + f" {pts[-1][0]:.1f},{H + zh}"
-        out.append(f'<polygon points="{aire}" fill="{couleur}" opacity=".12"/>')
-        out.append(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in pts)}" fill="none" stroke="{couleur}" stroke-width="3" stroke-linejoin="round"/>')
+        out.append(f'<polygon points="{aire}" fill="url(#g-aire)"/>')
+        out.append(f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in pts)}" fill="none" '
+                   'style="stroke:var(--g-ligne)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>')
         for (x, y), v, lab in zip(pts, valeurs, labels):
-            out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4.5" fill="#fff" stroke="{couleur}" stroke-width="2.5"><title>{lab} : {v:,.0f}</title></circle>'.replace(",", " "))
-            out.append(f'<text x="{x:.1f}" y="{y - 10:.1f}" text-anchor="middle" font-size="11" font-weight="bold" fill="#1d5a8c">{v:,.0f}</text>'.replace(",", " "))
-    return Markup(f'<svg viewBox="0 0 {W} {T}" role="img" style="width:100%;height:auto">' + "".join(out) + "</svg>")
+            out.append(f'<circle class="g-point" cx="{x:.1f}" cy="{y:.1f}" r="5.5"><title>{lab} : {_fmt(v)}</title></circle>')
+            if v:
+                out.append(f'<text class="g-val" x="{x:.1f}" y="{y - 12:.1f}" text-anchor="middle">{_fmt(v)}</text>')
+    return _svg(W, T, "Évolution du stock", "".join(out))
 
 
 def donnees_graphiques():
@@ -864,7 +898,11 @@ def donnees_graphiques():
         " JOIN lignes_vente lv ON lv.vente_id=v.id GROUP BY m")}
     ventes_mois = [vendu.get(k, 0) for k in cles]
     labels = [m[1] for m in mois]
-    return svg_ligne(labels, stock), svg_barres(labels, ventes_mois)
+    resume = {"stock_fin": _fmt(stock[-1] if stock else 0),
+              "stock_var": (stock[-1] - stock[-2]) if len(stock) > 1 else 0,
+              "ventes_total": _fmt(sum(ventes_mois)),
+              "ventes_moy": _fmt(sum(ventes_mois) / len(ventes_mois) if ventes_mois else 0)}
+    return svg_ligne(labels, stock), svg_barres(labels, ventes_mois), resume
 
 
 @app.route("/")
@@ -935,10 +973,10 @@ def index():
              else "Commande(s) en cours", "ventes": vm["n"],
              "montant": f"{vm['montant']:,.0f}".replace(",", " "), "non_lus": non_lus,
              "debut_mois": date.today().replace(day=1).isoformat()}
-    graphique_stock, graphique_ventes = donnees_graphiques()
+    graphique_stock, graphique_ventes, resume_graph = donnees_graphiques()
     return render_template("index.html", alertes=alertes, vaccins=vaccins, stats=stats,
                            prochaines=prochaines, graphique_stock=graphique_stock,
-                           graphique_ventes=graphique_ventes)
+                           graphique_ventes=graphique_ventes, resume_graph=resume_graph)
 
 
 # ---------------------------------------------------------------- Vaccins
@@ -4513,16 +4551,21 @@ BASE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#1d4310">
 <title>UPVac - Stock vaccins</title>
+<script>try{var t=localStorage.getItem('upvac_theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}</script>
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 <style>
 /* ============================================================ Thème UPVac */
 :root{
---vert:#498d1e;--vert-fonce:#2f6b14;--vert-nuit:#1d4310;--vert-clair:#eaf3e2;--vert-pale:#f5f9f1;
---bleu:#2563eb;--bleu-clair:#e8f0fe;--orange:#d97706;--orange-clair:#fff4e0;--rouge:#c62828;--rouge-clair:#fdecec;
---fond:#f3f6f0;--surface:#fff;--bord:#e0e7da;--bord-fort:#c9d4c1;--texte:#1b2617;--texte-2:#5a6853;--texte-3:#87937f;
+--vert:#3d9a1f;--vert-fonce:#2b7313;--vert-nuit:#173d0b;--vert-clair:#e6f4dc;--vert-pale:#f3f9ee;--titre:#173d0b;
+--or:#e3a008;--or-clair:#fdf3d4;
+--bleu:#2563eb;--bleu-clair:#e8f0fe;--orange:#d97706;--orange-clair:#fff4e0;--rouge:#d32f2f;--rouge-clair:#fdecec;
+--fond:#f2f6ef;--surface:#fff;--surface-2:#f8fbf6;--survol:#edf6e6;--champ:#fff;--ligne:#ebf0e7;--piste:#e3ebdd;
+--bord:#dde6d6;--bord-fort:#c3d0ba;--texte:#18230f;--texte-2:#56644f;--texte-3:#859180;
+--verre:rgba(255,255,255,.86);--entete:linear-gradient(180deg,#2b7313,#22610e);
+--g-grille:#e1e9db;--g-texte:#6b7865;--g-barre-1:#6cc43c;--g-barre-2:#2b7313;--g-ligne:#2563eb;--g-valeur:#173d0b;
 --rayon:12px;--rayon-p:8px;
 --ombre:0 1px 2px rgba(20,40,10,.05),0 2px 10px rgba(20,40,10,.06);
---ombre-forte:0 6px 24px rgba(20,40,10,.14);
+--ombre-forte:0 8px 28px rgba(20,40,10,.16);
 --menu:264px;
 --police:'Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif}
 *,*::before,*::after{box-sizing:border-box}
@@ -4531,14 +4574,14 @@ body{font-family:var(--police);font-size:15px;line-height:1.5;margin:0;backgroun
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 background:url('{{ url_for("static", filename="fond.png") }}') center 58%/min(52vw,560px) no-repeat;opacity:.045}
 main,.topbar,.pied{position:relative;z-index:1}
-a{color:var(--vert-fonce);text-underline-offset:3px}
-a:hover{color:var(--vert-nuit)}
+a{color:var(--lien,var(--vert-fonce));text-underline-offset:3px}
+a:hover{color:var(--lien-survol,var(--vert-nuit))}
 ::selection{background:#cfe6bd}
 
 /* ------------------------------------------------ Menu latéral */
 body.avec-menu{padding-left:var(--menu)}
 .sidebar{position:fixed;z-index:50;top:0;left:0;bottom:0;width:var(--menu);display:flex;flex-direction:column;
-background:linear-gradient(180deg,#1d4310 0%,#163409 100%);color:#e8f1e1;box-shadow:2px 0 14px rgba(0,0,0,.12)}
+background:linear-gradient(185deg,#1a4a0c 0%,#123307 55%,#0c2405 100%);color:#e8f1e1;box-shadow:2px 0 14px rgba(0,0,0,.12)}
 .sidebar .brand{display:flex;align-items:center;gap:12px;padding:16px 18px;text-decoration:none;color:#fff;border-bottom:1px solid rgba(255,255,255,.09)}
 .sidebar .brand img{height:42px;width:auto;background:#fff;border-radius:10px;padding:3px 5px}
 .sidebar .brand b{display:block;font-size:18px;letter-spacing:.4px;line-height:1.1}
@@ -4548,14 +4591,15 @@ background:linear-gradient(180deg,#1d4310 0%,#163409 100%);color:#e8f1e1;box-sha
 .sidebar .liens a{display:flex;align-items:center;gap:11px;padding:9px 11px;margin:1px 0;border-radius:9px;color:#dfe9d7;text-decoration:none;font-size:14px;font-weight:500;transition:background .15s,color .15s}
 .sidebar .liens a .i{width:22px;text-align:center;font-size:16px;flex:none}
 .sidebar .liens a:hover{background:rgba(255,255,255,.08);color:#fff}
-.sidebar .liens a.actif{background:linear-gradient(90deg,var(--vert) 0%,#3d7a18 100%);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.sidebar .liens a.actif{position:relative;background:linear-gradient(90deg,var(--vert) 0%,#2f7d15 100%);color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.sidebar .liens a.actif::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--or)}
 .sidebar .pastille-nb{margin-left:auto;background:#e8920c;color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;padding:0 6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
 .sidebar .bas-menu{padding:12px 18px;font-size:11.5px;color:#8fae7c;border-top:1px solid rgba(255,255,255,.09)}
 .voile{display:none}
 
 /* ------------------------------------------------ Barre du haut */
 .topbar{position:sticky;top:0;z-index:40;height:62px;display:flex;align-items:center;gap:14px;padding:0 28px;
-background:rgba(255,255,255,.86);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--bord)}
+background:var(--verre);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--bord)}
 .topbar .jour{color:var(--texte-2);font-size:13.5px}
 .topbar .jour b{color:var(--texte);font-weight:600}
 .topbar .outils{margin-left:auto;display:flex;align-items:center;gap:8px}
@@ -4565,13 +4609,13 @@ background:rgba(255,255,255,.86);backdrop-filter:saturate(1.4) blur(10px);-webki
 button.burger{display:none;background:transparent;color:var(--vert-nuit);border:1px solid var(--bord-fort);width:40px;height:40px;padding:0;font-size:20px;border-radius:10px;box-shadow:none}
 button.burger:hover{background:var(--vert-clair);color:var(--vert-nuit)}
 details.profil{position:relative}
-details.profil summary{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 10px 4px 4px;border-radius:24px;border:1px solid var(--bord);background:#fff;transition:box-shadow .15s}
+details.profil summary{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 10px 4px 4px;border-radius:24px;border:1px solid var(--bord);background:var(--surface);transition:box-shadow .15s}
 details.profil summary::-webkit-details-marker{display:none}
 details.profil summary:hover,details.profil[open] summary{box-shadow:0 0 0 3px var(--vert-clair)}
 .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--vert),var(--vert-nuit));color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;text-transform:uppercase}
 .profil .qui{line-height:1.15}.profil .qui b{display:block;font-size:13.5px}.profil .qui small{font-size:11.5px;color:var(--texte-2)}
 .profil .chevron{font-size:10px;color:var(--texte-3)}
-.profil .menu{position:absolute;right:0;top:calc(100% + 8px);min-width:220px;background:#fff;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre-forte);padding:6px;z-index:60}
+.profil .menu{position:absolute;right:0;top:calc(100% + 8px);min-width:220px;background:var(--surface);border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre-forte);padding:6px;z-index:60}
 .profil .menu a{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:8px;color:var(--texte);text-decoration:none;font-size:14px}
 .profil .menu a:hover{background:var(--vert-pale)}
 .profil .menu hr{border:0;border-top:1px solid var(--bord);margin:6px 4px}
@@ -4580,20 +4624,20 @@ details.profil summary:hover,details.profil[open] summary{box-shadow:0 0 0 3px v
 /* ------------------------------------------------ Contenu */
 main{max-width:1340px;margin:26px auto 10px;padding:0 28px}
 body:not(.avec-menu) main{max-width:1100px}
-h1{font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-.01em;color:var(--vert-nuit);margin:4px 0 18px}
-h2{font-size:18px;font-weight:700;color:#22311b;margin:30px 0 12px}
-h3{color:var(--vert-nuit)}
+h1{font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-.01em;color:var(--titre);margin:4px 0 18px}
+h2{font-size:18px;font-weight:700;color:var(--texte);margin:30px 0 12px}
+h3{color:var(--titre)}
 p{margin:10px 0}
 hr{border:0;border-top:1px solid var(--bord)}
 .pied{text-align:center;font-size:12px;color:var(--texte-3);padding:26px 10px 30px}
 
 /* Tableaux */
 table{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);font-size:14px;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre);overflow:hidden}
-th{background:var(--vert-fonce);color:#fff;text-align:left;padding:11px 12px;font-size:12.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
-td{padding:10px 12px;border-bottom:1px solid #edf1ea;vertical-align:middle}
+th{background:var(--entete);color:#fff;text-align:left;padding:11px 12px;font-size:12.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--ligne);vertical-align:middle}
 tr:last-child td{border-bottom:0}
-main table:not(.fact-table):not(.bon-table) tr:nth-child(even) td{background:#fafcf8}
-main table:not(.fact-table):not(.bon-table) tr:hover td{background:#f0f7ea}
+main table:not(.fact-table):not(.bon-table) tr:nth-child(even) td{background:var(--surface-2)}
+main table:not(.fact-table):not(.bon-table) tr:hover td{background:var(--survol)}
 td a{font-weight:600}
 .table-wrap{width:100%;overflow-x:auto;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre);background:var(--surface);margin:0 0 6px;-webkit-overflow-scrolling:touch}
 .table-wrap>table{border:0;border-radius:0;box-shadow:none;overflow:visible}
@@ -4604,7 +4648,7 @@ td small{color:var(--texte-2)}
 form.card{background:var(--surface);padding:18px;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre);display:grid;
 grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;align-items:end;margin:6px 0 10px}
 label{font-size:12.5px;font-weight:600;color:var(--texte-2);display:flex;flex-direction:column;gap:5px}
-input,select,textarea{font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--bord-fort);border-radius:var(--rayon-p);background:#fff;color:var(--texte);transition:border-color .15s,box-shadow .15s;min-width:0}
+input,select,textarea{font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--bord-fort);border-radius:var(--rayon-p);background:var(--champ);color:var(--texte);transition:border-color .15s,box-shadow .15s;min-width:0}
 textarea{resize:vertical}
 input[type=checkbox],input[type=radio]{width:17px;height:17px;padding:0;accent-color:var(--vert);flex:none}
 input[type=file]{padding:7px;background:var(--vert-pale);border-style:dashed}
@@ -4614,15 +4658,15 @@ input[readonly],input:disabled,select:disabled{background:#f3f5f1;color:var(--te
 input::placeholder,textarea::placeholder{color:#9aa594}
 
 /* Boutons */
-button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--vert);color:#fff;border:1px solid transparent;padding:9px 16px;border-radius:var(--rayon-p);cursor:pointer;font:inherit;font-size:14px;font-weight:600;line-height:1.2;box-shadow:0 1px 2px rgba(20,40,10,.15);transition:background .15s,box-shadow .15s,transform .05s;text-decoration:none;white-space:nowrap}
+button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(180deg,#46a823,var(--vert-fonce));color:#fff;border:1px solid transparent;padding:9px 16px;border-radius:var(--rayon-p);cursor:pointer;font:inherit;font-size:14px;font-weight:600;line-height:1.2;box-shadow:0 1px 2px rgba(20,40,10,.15);transition:background .15s,box-shadow .15s,transform .05s;text-decoration:none;white-space:nowrap}
 button:hover,.btn:hover{background:var(--vert-fonce);color:#fff}
 button:active,.btn:active{transform:translateY(1px)}
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid rgba(73,141,30,.45);outline-offset:2px}
 button.petit{padding:5px 11px;font-size:12.5px;border-radius:7px}
 button.danger{background:var(--rouge)}button.danger:hover{background:#9b1c1c}
-button.secondaire,.btn.secondaire{background:#fff;color:var(--vert-fonce);border:1px solid var(--vert)}
+button.secondaire,.btn.secondaire{background:var(--surface);color:var(--vert-fonce);border:1px solid var(--vert)}
 button.secondaire:hover,.btn.secondaire:hover{background:var(--vert);color:#fff}
-.btn-export{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--vert);color:var(--vert-fonce);border-radius:var(--rayon-p);font-weight:600;font-size:13.5px;text-decoration:none;background:#fff;transition:background .15s}
+.btn-export{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--vert);color:var(--vert-fonce);border-radius:var(--rayon-p);font-weight:600;font-size:13.5px;text-decoration:none;background:var(--surface);transition:background .15s}
 .btn-export:hover{background:var(--vert);color:#fff}
 form.en-ligne{display:inline-flex;gap:4px;margin:0 4px 0 0}
 
@@ -4674,9 +4718,9 @@ a.carte:hover .fleche{transform:translateX(3px);color:var(--accent)}
 .deux-col.egal{grid-template-columns:1fr 1fr;margin-top:8px}
 .deux-col.egal .panneau:only-child{grid-column:1/-1}
 .panneau{background:var(--surface);border:1px solid var(--bord);border-radius:14px;padding:8px 18px 14px;box-shadow:var(--ombre)}
-.panneau h2{font-size:15px;margin:12px 0 8px;color:var(--vert-nuit)}
+.panneau h2{font-size:15px;margin:12px 0 8px;color:var(--titre)}
 @media(max-width:1100px){.deux-col,.deux-col.egal{grid-template-columns:1fr}}
-.barre{background:#e6ebe2;border-radius:8px;height:9px;min-width:90px;overflow:hidden}
+.barre{background:var(--piste);border-radius:8px;height:9px;min-width:90px;overflow:hidden}
 .rempli{height:100%;border-radius:8px;transition:width .6s ease}.rempli.ok{background:linear-gradient(90deg,#6bb33a,var(--vert))}.rempli.bas{background:linear-gradient(90deg,#e45a5a,var(--rouge))}
 .mdp-box{background:#fffbe6;border:2px dashed #e8920c;padding:14px 16px;border-radius:10px;margin:12px 0}
 .mdp-box code{font-size:22px;background:#fff;padding:3px 10px;border-radius:5px;letter-spacing:1.5px;user-select:all}
@@ -4692,10 +4736,10 @@ a.carte:hover .fleche{transform:translateX(3px);color:var(--accent)}
 input.recherche{width:100%;max-width:400px;margin:4px 0 12px;padding-left:12px}
 
 /* Onglets */
-.onglets{display:flex;gap:4px;margin:10px 0 16px;flex-wrap:wrap;background:#e7eee1;padding:4px;border-radius:11px;width:fit-content;max-width:100%}
+.onglets{display:flex;gap:4px;margin:10px 0 16px;flex-wrap:wrap;background:var(--piste);padding:4px;border-radius:11px;width:fit-content;max-width:100%}
 .onglets a{padding:8px 18px;border-radius:8px;color:var(--vert-nuit);text-decoration:none;font-weight:600;font-size:14px;transition:background .15s}
 .onglets a:hover{background:rgba(255,255,255,.6)}
-.onglets a.actif{background:#fff;color:var(--vert-fonce);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.onglets a.actif{background:var(--surface);color:var(--vert-fonce);box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .rapide{border:1px solid #bcd9a6;border-radius:var(--rayon);padding:4px 18px 14px;background:linear-gradient(180deg,#f4faee,#fff);margin-bottom:18px;box-shadow:var(--ombre)}
 .rapide h2{margin:12px 0 4px}
 .indice{font-size:12px;color:var(--texte-2);min-height:16px;grid-column:1/-1}.indice.alerte{color:#9b1c1c;font-weight:bold}
@@ -4750,7 +4794,7 @@ input.recherche{width:100%;max-width:400px;margin:4px 0 12px;padding-left:12px}
 .bon{padding:16px}.bon-entete{flex-wrap:wrap}.bon-infos,.bon-sign{grid-template-columns:1fr}.bon-table{font-size:12px}}
 
 /* Commandes : saisie et circuit */
-.bloc-cmd fieldset{border:1px solid var(--bord);border-radius:var(--rayon);padding:14px 16px;margin:14px 0;background:#fff;box-shadow:var(--ombre)}
+.bloc-cmd fieldset{border:1px solid var(--bord);border-radius:var(--rayon);padding:14px 16px;margin:14px 0;background:var(--surface);box-shadow:var(--ombre)}
 .bloc-cmd legend{font-weight:700;color:var(--vert-fonce);padding:0 8px;font-size:15px}
 .grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .grille label{display:flex;flex-direction:column;font-size:12.5px;color:var(--texte-2);gap:4px}
@@ -4760,14 +4804,14 @@ input.recherche{width:100%;max-width:400px;margin:4px 0 12px;padding-left:12px}
 @media(max-width:700px){
 .table-lignes,.table-lignes tbody{display:block;overflow:visible;border:0;box-shadow:none;background:transparent}
 .table-lignes thead{display:none}
-.table-lignes tr.ligne-cmd{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;border:1px solid #cfd8c8;border-radius:8px;padding:8px;margin-bottom:8px;background:#fff}
+.table-lignes tr.ligne-cmd{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;border:1px solid #cfd8c8;border-radius:8px;padding:8px;margin-bottom:8px;background:var(--surface)}
 .table-lignes td{display:block;padding:0;border:0}
 .table-lignes td:first-child{grid-column:1/-1}
 .table-lignes td.l-montant{grid-column:1/3;text-align:left}
 .table-lignes input.l-qte,.table-lignes input.l-prix{width:100%}
 }
 .etapes{list-style:none;display:flex;gap:8px;padding:0;margin:8px 0 16px;flex-wrap:wrap}
-.etapes li{flex:1 1 110px;background:#fff;border:1px solid var(--bord);border-radius:12px;padding:10px 12px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--ombre)}
+.etapes li{flex:1 1 110px;background:var(--surface);border:1px solid var(--bord);border-radius:12px;padding:10px 12px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--ombre)}
 .etapes .pastille{width:26px;height:26px;border-radius:50%;background:#cfd8c8;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:bold}
 .etapes li.fait{border-color:#a9d18e;background:#f3f9ee}.etapes li.fait .pastille{background:var(--vert)}
 .etapes li.courant{border-color:#e8920c;background:#fffaf0;box-shadow:0 0 0 3px #f8e1b5}.etapes li.courant .pastille{background:#e8920c}
@@ -4795,7 +4839,7 @@ body.login{background:linear-gradient(135deg,#eef5e8 0%,#dfead5 100%)}
 body.login::before{opacity:.10;background-position:right -8% center;background-size:min(70vw,780px)}
 body.login main{max-width:1040px}
 .login-wrap{min-height:calc(100vh - 110px);display:flex;align-items:center;justify-content:center;padding:20px 0}
-.login-boite{display:grid;grid-template-columns:1.05fr 1fr;width:100%;max-width:940px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(29,67,16,.22)}
+.login-boite{display:grid;grid-template-columns:1.05fr 1fr;width:100%;max-width:940px;background:var(--surface);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(29,67,16,.22)}
 .login-marque{position:relative;padding:44px 40px;color:#fff;background:linear-gradient(150deg,#2f6b14 0%,#1d4310 60%,#132e08 100%);display:flex;flex-direction:column;justify-content:space-between;gap:28px;overflow:hidden}
 .login-marque::after{content:"";position:absolute;right:-90px;bottom:-90px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.06)}
 .login-marque::before{content:"";position:absolute;right:40px;top:-60px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05)}
@@ -4846,6 +4890,76 @@ th,.bon-table tfoot td,.bon-entete,.fact-table th,.fact-badge{-webkit-print-colo
 .bon-table tr{break-inside:avoid}}
 @page{size:A4;margin:14mm}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+/* ------------------------------------------------ En-têtes de page, titres, états vides */
+main>h1:first-of-type,.entete-page h1{display:flex;align-items:center;gap:14px}
+main>h1:first-of-type::before,.entete-page h1::before{content:var(--ico-page,"📄");flex:none;width:48px;height:48px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:24px;
+background:linear-gradient(135deg,var(--vert-clair),var(--surface));border:1px solid var(--bord);box-shadow:var(--ombre)}
+main>h1:first-of-type{padding-bottom:16px;border-bottom:1px solid var(--bord);margin-bottom:22px}
+main>h2,.deux-col>div:not(.panneau)>h2{display:flex;align-items:center;gap:10px}
+main>h2::before,.deux-col>div:not(.panneau)>h2::before{content:"";width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--or),var(--vert));flex:none}
+form.card{border-top:3px solid var(--vert)}
+tr:nth-child(2):last-child>td[colspan]{text-align:center;padding:34px 16px;color:var(--texte-3);font-style:italic;background:var(--surface)!important}
+tr:nth-child(2):last-child>td[colspan]::before{content:"📭";display:block;font-size:30px;font-style:normal;margin-bottom:6px;opacity:.8}
+
+/* ------------------------------------------------ Graphiques */
+.graph{display:block;width:100%;height:auto}
+.graph .g-grille{stroke:var(--g-grille)}
+.graph .g-axe{fill:var(--g-texte);font-size:11.5px}
+.graph .g-lib{fill:var(--texte-2);font-size:12px;font-weight:600}
+.graph .g-val{fill:var(--g-valeur);font-size:12px;font-weight:700}
+.graph .g-vide{fill:var(--texte-3);font-size:13px}
+.graph .g-point{fill:var(--surface);stroke:var(--g-ligne);stroke-width:3}
+.graph .g-barre{transition:opacity .15s}.graph .g-barre:hover{opacity:.8}
+.graph .g-point:hover{r:7}
+.resume-graph{display:flex;gap:18px;flex-wrap:wrap;margin:-2px 0 8px;font-size:12.5px;color:var(--texte-2)}
+.resume-graph b{display:block;font-size:20px;color:var(--texte);font-variant-numeric:tabular-nums}
+
+/* ------------------------------------------------ Bouton de thème */
+.theme-btn{font-size:18px;background:transparent;border:0;box-shadow:none;cursor:pointer;padding:0}
+.theme-btn:hover{background:var(--vert-clair)}
+.theme-btn .sombre-ico{display:none}
+html[data-theme=sombre] .theme-btn .clair-ico{display:none}
+html[data-theme=sombre] .theme-btn .sombre-ico{display:inline}
+.login-theme{position:fixed;top:14px;right:14px;z-index:5;background:var(--surface);border:1px solid var(--bord)}
+
+/* ------------------------------------------------ Mode sombre */
+html[data-theme=sombre]{color-scheme:dark;
+--vert:#4caf2a;--vert-fonce:#5cc236;--vert-nuit:#bfe6a8;--vert-clair:#1f3417;--vert-pale:#18261a;--titre:#cdeeb8;
+--lien:#8fd66a;--lien-survol:#b5ec95;
+--bleu:#5b8def;--bleu-clair:#172440;--orange:#f0a032;--orange-clair:#33260f;--rouge:#ef5350;--rouge-clair:#3a1a1a;--or:#f2c14e;--or-clair:#3a2f10;
+--fond:#0e140e;--surface:#172017;--surface-2:#1a241a;--survol:#213021;--champ:#111911;--ligne:#232f23;--piste:#253225;
+--bord:#2a382a;--bord-fort:#3b4d3b;--texte:#e4ecdf;--texte-2:#a7b6a1;--texte-3:#7b8a76;
+--verre:rgba(18,26,18,.86);--entete:linear-gradient(180deg,#24521a,#1b4212);
+--g-grille:#263326;--g-texte:#8d9c88;--g-barre-1:#7fd64e;--g-barre-2:#3f8f1f;--g-ligne:#6f9dff;--g-valeur:#d6f0c4;
+--ombre:0 1px 2px rgba(0,0,0,.4),0 2px 10px rgba(0,0,0,.3);--ombre-forte:0 8px 28px rgba(0,0,0,.5)}
+html[data-theme=sombre] body::before{display:none}
+html[data-theme=sombre] button.secondaire,html[data-theme=sombre] .btn.secondaire,html[data-theme=sombre] .btn-export{color:var(--lien);border-color:#3f8f1f}
+html[data-theme=sombre] button.secondaire:hover,html[data-theme=sombre] .btn.secondaire:hover,html[data-theme=sombre] .btn-export:hover{background:#2b7313;color:#fff}
+html[data-theme=sombre] .success{background:#16301a}html[data-theme=sombre] .danger{background:#361a1a}html[data-theme=sombre] .warning{background:#33290f}
+html[data-theme=sombre] .flash.success{border-color:#24502a;color:#b8e8bd}
+html[data-theme=sombre] .flash.danger{border-color:#5a2626;color:#f5bcbc}
+html[data-theme=sombre] .flash.warning{border-color:#5a4615;color:#f5dc9a}
+html[data-theme=sombre] .flash.info{border-color:#24396a;color:#bcd0fb}
+html[data-theme=sombre] .badge{background:#2a352a;color:#cfd8cb}
+html[data-theme=sombre] .b-conforme,html[data-theme=sombre] .b-disponible,html[data-theme=sombre] .b-validée,html[data-theme=sombre] .b-livrée{background:#1b3b20;color:#9be3a6}
+html[data-theme=sombre] .b-quarantaine,html[data-theme=sombre] .b-rappelé,html[data-theme=sombre] .b-facturée{background:#3a2e0f;color:#f3cf7a}
+html[data-theme=sombre] .b-périmé,html[data-theme=sombre] .b-annulée{background:#421c1c;color:#f6a9a9}
+html[data-theme=sombre] .b-réservé,html[data-theme=sombre] .b-enregistrée,html[data-theme=sombre] .b-émise,html[data-theme=sombre] .b-transmise{background:#1a2a4a;color:#a9c4fb}
+html[data-theme=sombre] .b-vendu,html[data-theme=sombre] .b-archivée,html[data-theme=sombre] .b-détruit{background:#2a2f33;color:#c3c9ce}
+html[data-theme=sombre] .c-orange{--accent-clair:#3a2c10;background:#1d1a10}html[data-theme=sombre] .c-orange b{color:#f3b45a}
+html[data-theme=sombre] .c-rouge{--accent-clair:#3e1c1c;background:#201414}html[data-theme=sombre] .c-rouge b{color:#ff7a77}
+html[data-theme=sombre] .rapide{background:linear-gradient(180deg,#18281a,var(--surface));border-color:#2f4a2a}
+html[data-theme=sombre] .etapes li.fait{background:#18281a;border-color:#2f5a25}
+html[data-theme=sombre] .etapes li.courant{background:#2a2312;box-shadow:0 0 0 3px #4a3a15}
+html[data-theme=sombre] .alerte-circuit{background:#361a1a}
+html[data-theme=sombre] .mdp-box{background:#2a2412}html[data-theme=sombre] .mdp-box code{background:#111911;color:#f3cf7a}
+html[data-theme=sombre] body.login{background:linear-gradient(135deg,#0e140e,#142014)}
+html[data-theme=sombre] .attente{color:#f3cf7a}
+html[data-theme=sombre] .indice.alerte{color:#ff8a87}
+html[data-theme=sombre] details.profil summary{background:var(--surface)}
+html[data-theme=sombre] .actions-bon small{color:var(--texte-2)}
+@media print{:root,html[data-theme=sombre]{color-scheme:light;--surface:#fff;--surface-2:#fff;--texte:#18230f;--texte-2:#56644f;--titre:#173d0b;--bord:#dde6d6;--ligne:#ebf0e7;
+--entete:#2b7313;--g-grille:#e1e9db;--g-texte:#6b7865;--g-valeur:#173d0b}}
 </style></head>
 <body class="{% if session.user %}avec-menu {% endif %}{% block bodyclass %}{% endblock %}">
 {% macro lien(url, actif, ico, texte, nb=0) %}<a href="{{ url }}"{% if actif %} class="actif" aria-current="page"{% endif %}><span class="i" aria-hidden="true">{{ ico }}</span><span>{{ texte }}</span>{% if nb %}<span class="pastille-nb">{{ nb }}</span>{% endif %}</a>{% endmacro %}
@@ -4883,6 +4997,7 @@ th,.bon-table tfoot td,.bon-entete,.fact-table th,.fact-badge{-webkit-print-colo
 onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('aria-expanded',o)">☰</button>
 <div class="jour">{{ jour_fr }}</div>
 <div class="outils">
+<button type="button" class="icone-btn theme-btn" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">🌙</span><span class="sombre-ico">☀️</span></button>
 <a class="icone-btn" href="{{ url_for('messages') }}" title="Messagerie" aria-label="Messagerie{% if nb_non_lus %}, {{ nb_non_lus }} non lu(s){% endif %}">✉️{% if nb_non_lus %}<span class="nb">{{ nb_non_lus }}</span>{% endif %}</a>
 <details class="profil"><summary><span class="avatar">{{ session.user.username[:1] }}</span><span class="qui"><b>{{ session.user.username }}</b><small>{{ r|role_lib }}</small></span><span class="chevron">▼</span></summary>
 <div class="menu">
@@ -4890,8 +5005,8 @@ onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('
 <a href="{{ url_for('mot_de_passe') }}">🔑 Mot de passe</a>
 <hr><a class="sortie" href="{{ url_for('logout') }}">⏻ Déconnexion</a>
 </div></details>
-</div></header>{% endif %}
-<main>{% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes no-print" role="status">{% for cat, m in msgs %}
+</div></header>{% else %}<button type="button" class="icone-btn theme-btn login-theme" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">🌙</span><span class="sombre-ico">☀️</span></button>{% endif %}
+<main style="--ico-page:'{{ ico_page }}'">{% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes no-print" role="status">{% for cat, m in msgs %}
 <div class="flash {{ cat }}"><span>{{ m }}</span><button type="button" class="fermer" aria-label="Fermer" onclick="this.parentNode.remove()">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
 {% block content %}{% endblock %}</main>
 <footer class="pied">UPVac · ISRA — Gestion de stock des vaccins · © {{ annee }}</footer>
@@ -4927,6 +5042,10 @@ onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('
   document.addEventListener('click',function(e){
     document.querySelectorAll('details.profil[open]').forEach(function(d){if(!d.contains(e.target)){d.removeAttribute('open');}});
   });
+  window.basculerTheme=function(){
+    var h=document.documentElement, s=h.getAttribute('data-theme')==='sombre'?'clair':'sombre';
+    h.setAttribute('data-theme',s); try{localStorage.setItem('upvac_theme',s);}catch(e){}
+  };
   var actif=document.querySelector('.sidebar .liens a.actif');
   if(actif&&actif.scrollIntoView){actif.scrollIntoView({block:'nearest'});}
 })();
@@ -5027,8 +5146,13 @@ INDEX = """{% extends 'base.html' %}{% block content %}
 </div></div>
 
 <div class="deux-col egal" style="margin-top:22px">
-<div class="panneau"><h2>📈 Évolution du stock</h2><p class="legende-graph">Doses en stock en fin de mois, 6 derniers mois</p>{{ graphique_stock }}</div>
-{% if droits.ventes_voir %}<div class="panneau"><h2>📊 Doses vendues par mois</h2><p class="legende-graph">Quantités vendues, 6 derniers mois</p>{{ graphique_ventes }}</div>{% endif %}
+<div class="panneau"><h2>📈 Évolution du stock</h2><p class="legende-graph">Doses en stock en fin de mois, 6 derniers mois</p>
+<div class="resume-graph"><span><b>{{ resume_graph.stock_fin }}</b>doses fin de mois</span>
+{% if resume_graph.stock_var %}<span><b style="color:{{ 'var(--vert)' if resume_graph.stock_var > 0 else 'var(--rouge)' }}">{{ '▲' if resume_graph.stock_var > 0 else '▼' }} {{ resume_graph.stock_var|abs|nombre }}</b>sur le dernier mois</span>{% endif %}</div>
+{{ graphique_stock }}</div>
+{% if droits.ventes_voir %}<div class="panneau"><h2>📊 Doses vendues par mois</h2><p class="legende-graph">Quantités vendues, 6 derniers mois</p>
+<div class="resume-graph"><span><b>{{ resume_graph.ventes_total }}</b>doses sur 6 mois</span><span><b>{{ resume_graph.ventes_moy }}</b>en moyenne / mois</span></div>
+{{ graphique_ventes }}</div>{% endif %}
 </div>
 
 <div class="deux-col">
