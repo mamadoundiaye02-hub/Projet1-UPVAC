@@ -1,0 +1,18 @@
+# Secrets : ne jamais envoyer sur GitHub
+secret.key
+.env
+
+# Données de production et sauvegardes
+*.db
+*.db-journal
+*.sqlite3
+uploads/
+
+# Copies de sauvegarde locales du code
+*_avant_*.py
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
