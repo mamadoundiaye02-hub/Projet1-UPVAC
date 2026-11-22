@@ -550,6 +550,14 @@ def peut_gerer():
     return droit("lots_gerer")
 
 
+JOURS_FR = ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
+
+
+def jour_en_lettres(d):
+    """« Dimanche 22 novembre 2026 » pour l'en-tête des pages."""
+    return f"{JOURS_FR[d.weekday()].capitalize()} {d.day} {MOIS_LONGS[d.month - 1]} {d.year}"
+
+
 @app.context_processor
 def inject_globals():
     nb = 0
@@ -557,7 +565,7 @@ def inject_globals():
         nb = query("SELECT COUNT(*) AS n FROM messages WHERE destinataire_id=? AND lu=0",
                    (session["user"]["id"],), one=True)["n"]
     return {"nb_non_lus": nb, "peut_gerer": peut_gerer(), "STATUTS": STATUTS,
-            "MOTIFS_SORTIE": MOTIFS_SORTIE, "annee": date.today().year, "devise": DEVISE, "TYPES_DOC": TYPES_DOC,
+            "MOTIFS_SORTIE": MOTIFS_SORTIE, "annee": date.today().year, "jour_fr": jour_en_lettres(date.today()), "devise": DEVISE, "TYPES_DOC": TYPES_DOC,
             "droits": {k: droit(k) for k in DROITS}}
 
 
@@ -925,7 +933,8 @@ def index():
              "proches": n_proches, "bas": n_bas, "art_bas": n_art_bas, "commandes": n_cmd,
              "commandes_libelle": "Commande(s) à traiter par vous" if session["user"]["role"] in A_TRAITER
              else "Commande(s) en cours", "ventes": vm["n"],
-             "montant": f"{vm['montant']:,.0f}".replace(",", " "), "non_lus": non_lus}
+             "montant": f"{vm['montant']:,.0f}".replace(",", " "), "non_lus": non_lus,
+             "debut_mois": date.today().replace(day=1).isoformat()}
     graphique_stock, graphique_ventes = donnees_graphiques()
     return render_template("index.html", alertes=alertes, vaccins=vaccins, stats=stats,
                            prochaines=prochaines, graphique_stock=graphique_stock,
@@ -1257,6 +1266,9 @@ def mouvement_reservation():
         execute("INSERT INTO reservations(lot_id, client_id, quantite, date, user_id, note) VALUES (?,?,?,?,?,?)",
                 (lot["id"], client["id"], qte, now(), session["user"]["id"], note or None))
         audit(f"Réservation de {qte} dose(s) du lot {lot['numero_lot']} pour {client['nom']}")
+        notifier("Nouvelle réservation de vaccins",
+                 f"Le CSA a réservé {qte} dose(s) de {lot['vaccin_nom']} (lot {lot['numero_lot']}) pour {client['nom']}."
+                 " Ces doses ne doivent pas être vendues à d'autres clients.", roles_dest=("responsable_stock",))
         flash(f"{qte} dose(s) du lot {lot['numero_lot']} réservée(s) pour {client['nom']}.", "success")
     return redirect(url_for("mouvements") + "#reservations")
 
@@ -1269,6 +1281,9 @@ def mouvement_reservation_annuler(rid):
     if r:
         execute("UPDATE reservations SET actif=0 WHERE id=?", (rid,))
         audit(f"Annulation de la réservation de {r['quantite']} dose(s) du lot {r['numero_lot']} pour {r['client']}")
+        notifier("Réservation annulée",
+                 f"Le CSA a annulé la réservation de {r['quantite']} dose(s) du lot {r['numero_lot']} pour {r['client']} :"
+                 " ces doses sont de nouveau disponibles.", roles_dest=("responsable_stock",))
         flash("Réservation annulée : les doses sont de nouveau disponibles.", "success")
     return redirect(url_for("mouvements") + "#reservations")
 
@@ -4496,81 +4511,200 @@ def journal():
 # ---------------------------------------------------------------- Gabarits HTML
 BASE = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1d4310">
 <title>UPVac - Stock vaccins</title>
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 <style>
-:root{--vert:#498d1e;--vert-fonce:#2f6b14;--vert-nuit:#1d4310;--vert-clair:#eaf3e2}
-body{font-family:'Segoe UI',Arial,sans-serif;margin:0;background:linear-gradient(160deg,#f3f8ee 0%,#e4efdb 100%);color:#222;min-height:100vh;position:relative;display:flow-root}
+/* ============================================================ Thème UPVac */
+:root{
+--vert:#498d1e;--vert-fonce:#2f6b14;--vert-nuit:#1d4310;--vert-clair:#eaf3e2;--vert-pale:#f5f9f1;
+--bleu:#2563eb;--bleu-clair:#e8f0fe;--orange:#d97706;--orange-clair:#fff4e0;--rouge:#c62828;--rouge-clair:#fdecec;
+--fond:#f3f6f0;--surface:#fff;--bord:#e0e7da;--bord-fort:#c9d4c1;--texte:#1b2617;--texte-2:#5a6853;--texte-3:#87937f;
+--rayon:12px;--rayon-p:8px;
+--ombre:0 1px 2px rgba(20,40,10,.05),0 2px 10px rgba(20,40,10,.06);
+--ombre-forte:0 6px 24px rgba(20,40,10,.14);
+--menu:264px;
+--police:'Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--police);font-size:15px;line-height:1.5;margin:0;background:var(--fond);color:var(--texte);min-height:100vh;position:relative;display:flow-root;-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-background:url('{{ url_for("static", filename="fond.png") }}') center 58%/min(62vw,620px) no-repeat;opacity:.09}
-nav,main{position:relative;z-index:1}
-nav{background:linear-gradient(90deg,var(--vert-nuit),var(--vert-fonce));padding:8px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-nav .brand{display:flex;align-items:center;gap:10px;font-weight:bold;font-size:15px;letter-spacing:.5px}
-nav .brand img{height:38px;background:#fff;border-radius:6px;padding:2px 4px}
-nav a:hover{text-decoration:underline}nav .liens a.actif{font-weight:800;text-decoration:underline;text-underline-offset:5px}
-nav .liens{display:contents}
-nav .liens>a{font-size:14px}
-nav button.burger{display:none;margin-left:auto;background:transparent;border:2px solid rgba(255,255,255,.75);color:#fff;font-size:22px;line-height:1;padding:4px 11px;border-radius:6px;cursor:pointer}
-nav button.burger:hover{background:rgba(255,255,255,.15)}
-.pied{position:relative;z-index:1;text-align:center;font-size:12px;color:#667;padding:20px 10px 26px}
-@media(max-width:700px){main table{display:block;overflow-x:auto}}
-@media(max-width:1000px){
-nav{padding:8px 14px}
-nav button.burger{display:block}
-nav .liens{display:none;width:100%;flex-direction:column;gap:0;margin-top:6px;border-top:1px solid rgba(255,255,255,.25)}
-nav.ouvert .liens{display:flex}
-nav .liens a{padding:13px 4px;font-size:16px;border-bottom:1px solid rgba(255,255,255,.12)}
-nav .liens .right{margin:0;padding:12px 4px;line-height:2}
-nav .liens .right a{display:inline;padding:0;border:0;font-size:14px}
-}
-nav a{color:#fff;text-decoration:none;font-size:14px}nav .right{margin-left:auto;color:#fff;font-size:13px}
-main{max-width:1100px;margin:20px auto;padding:0 16px}
-h1{font-size:22px;color:var(--vert-nuit)}h2{font-size:17px;margin-top:28px}
-table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-th{background:var(--vert-fonce);color:#fff;text-align:left;padding:8px}td{padding:7px 8px;border-bottom:1px solid #ddd}
-form.card{background:#fff;padding:14px;border:1px solid #ddd;display:grid;
-grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end}
-label{font-size:12px;display:flex;flex-direction:column;gap:3px}
-input,select,textarea{padding:6px;font-size:14px;border:1px solid #bbb;border-radius:3px}
-button{background:var(--vert);color:#fff;border:0;padding:8px 14px;border-radius:4px;cursor:pointer;font-weight:600}
-button:hover{background:var(--vert-fonce)}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--vert);border-color:var(--vert)}
-.flash{padding:10px;margin-bottom:10px;border-radius:3px}
-.success{background:#d4edda}.danger{background:#f8d7da}.warning{background:#fff3cd}
-.badge{padding:2px 8px;border-radius:10px;font-size:12px;background:#ddd}
-.b-conforme,.b-disponible{background:#d4edda}.b-vendu{background:#e2e3e5}.b-réservé{background:#cfe2ff}.b-quarantaine,.b-rappelé{background:#fff3cd}.b-périmé{background:#f8d7da}
+background:url('{{ url_for("static", filename="fond.png") }}') center 58%/min(52vw,560px) no-repeat;opacity:.045}
+main,.topbar,.pied{position:relative;z-index:1}
+a{color:var(--vert-fonce);text-underline-offset:3px}
+a:hover{color:var(--vert-nuit)}
+::selection{background:#cfe6bd}
+
+/* ------------------------------------------------ Menu latéral */
+body.avec-menu{padding-left:var(--menu)}
+.sidebar{position:fixed;z-index:50;top:0;left:0;bottom:0;width:var(--menu);display:flex;flex-direction:column;
+background:linear-gradient(180deg,#1d4310 0%,#163409 100%);color:#e8f1e1;box-shadow:2px 0 14px rgba(0,0,0,.12)}
+.sidebar .brand{display:flex;align-items:center;gap:12px;padding:16px 18px;text-decoration:none;color:#fff;border-bottom:1px solid rgba(255,255,255,.09)}
+.sidebar .brand img{height:42px;width:auto;background:#fff;border-radius:10px;padding:3px 5px}
+.sidebar .brand b{display:block;font-size:18px;letter-spacing:.4px;line-height:1.1}
+.sidebar .brand small{display:block;font-size:11.5px;color:#b6cda6;letter-spacing:.3px}
+.sidebar .liens{flex:1;overflow-y:auto;padding:8px 10px 18px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+.sidebar .groupe{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:#8fae7c;padding:16px 10px 6px}
+.sidebar .liens a{display:flex;align-items:center;gap:11px;padding:9px 11px;margin:1px 0;border-radius:9px;color:#dfe9d7;text-decoration:none;font-size:14px;font-weight:500;transition:background .15s,color .15s}
+.sidebar .liens a .i{width:22px;text-align:center;font-size:16px;flex:none}
+.sidebar .liens a:hover{background:rgba(255,255,255,.08);color:#fff}
+.sidebar .liens a.actif{background:linear-gradient(90deg,var(--vert) 0%,#3d7a18 100%);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.sidebar .pastille-nb{margin-left:auto;background:#e8920c;color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;padding:0 6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+.sidebar .bas-menu{padding:12px 18px;font-size:11.5px;color:#8fae7c;border-top:1px solid rgba(255,255,255,.09)}
+.voile{display:none}
+
+/* ------------------------------------------------ Barre du haut */
+.topbar{position:sticky;top:0;z-index:40;height:62px;display:flex;align-items:center;gap:14px;padding:0 28px;
+background:rgba(255,255,255,.86);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--bord)}
+.topbar .jour{color:var(--texte-2);font-size:13.5px}
+.topbar .jour b{color:var(--texte);font-weight:600}
+.topbar .outils{margin-left:auto;display:flex;align-items:center;gap:8px}
+.icone-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;color:var(--texte-2);text-decoration:none;font-size:18px;transition:background .15s}
+.icone-btn:hover{background:var(--vert-clair);color:var(--vert-nuit)}
+.icone-btn .nb{position:absolute;top:3px;right:2px;background:var(--rouge);color:#fff;font-size:10.5px;font-weight:700;min-width:18px;height:18px;border-radius:9px;padding:0 5px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+button.burger{display:none;background:transparent;color:var(--vert-nuit);border:1px solid var(--bord-fort);width:40px;height:40px;padding:0;font-size:20px;border-radius:10px;box-shadow:none}
+button.burger:hover{background:var(--vert-clair);color:var(--vert-nuit)}
+details.profil{position:relative}
+details.profil summary{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 10px 4px 4px;border-radius:24px;border:1px solid var(--bord);background:#fff;transition:box-shadow .15s}
+details.profil summary::-webkit-details-marker{display:none}
+details.profil summary:hover,details.profil[open] summary{box-shadow:0 0 0 3px var(--vert-clair)}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--vert),var(--vert-nuit));color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;text-transform:uppercase}
+.profil .qui{line-height:1.15}.profil .qui b{display:block;font-size:13.5px}.profil .qui small{font-size:11.5px;color:var(--texte-2)}
+.profil .chevron{font-size:10px;color:var(--texte-3)}
+.profil .menu{position:absolute;right:0;top:calc(100% + 8px);min-width:220px;background:#fff;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre-forte);padding:6px;z-index:60}
+.profil .menu a{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:8px;color:var(--texte);text-decoration:none;font-size:14px}
+.profil .menu a:hover{background:var(--vert-pale)}
+.profil .menu hr{border:0;border-top:1px solid var(--bord);margin:6px 4px}
+.profil .menu a.sortie{color:var(--rouge)}
+
+/* ------------------------------------------------ Contenu */
+main{max-width:1340px;margin:26px auto 10px;padding:0 28px}
+body:not(.avec-menu) main{max-width:1100px}
+h1{font-size:26px;line-height:1.2;font-weight:800;letter-spacing:-.01em;color:var(--vert-nuit);margin:4px 0 18px}
+h2{font-size:18px;font-weight:700;color:#22311b;margin:30px 0 12px}
+h3{color:var(--vert-nuit)}
+p{margin:10px 0}
+hr{border:0;border-top:1px solid var(--bord)}
+.pied{text-align:center;font-size:12px;color:var(--texte-3);padding:26px 10px 30px}
+
+/* Tableaux */
+table{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);font-size:14px;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre);overflow:hidden}
+th{background:var(--vert-fonce);color:#fff;text-align:left;padding:11px 12px;font-size:12.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #edf1ea;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+main table:not(.fact-table):not(.bon-table) tr:nth-child(even) td{background:#fafcf8}
+main table:not(.fact-table):not(.bon-table) tr:hover td{background:#f0f7ea}
+td a{font-weight:600}
+.table-wrap{width:100%;overflow-x:auto;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre);background:var(--surface);margin:0 0 6px;-webkit-overflow-scrolling:touch}
+.table-wrap>table{border:0;border-radius:0;box-shadow:none;overflow:visible}
+td small{color:var(--texte-2)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+
+/* Formulaires */
+form.card{background:var(--surface);padding:18px;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre);display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;align-items:end;margin:6px 0 10px}
+label{font-size:12.5px;font-weight:600;color:var(--texte-2);display:flex;flex-direction:column;gap:5px}
+input,select,textarea{font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--bord-fort);border-radius:var(--rayon-p);background:#fff;color:var(--texte);transition:border-color .15s,box-shadow .15s;min-width:0}
+textarea{resize:vertical}
+input[type=checkbox],input[type=radio]{width:17px;height:17px;padding:0;accent-color:var(--vert);flex:none}
+input[type=file]{padding:7px;background:var(--vert-pale);border-style:dashed}
+input:hover,select:hover,textarea:hover{border-color:#a9b8a0}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--vert);box-shadow:0 0 0 3px rgba(73,141,30,.18)}
+input[readonly],input:disabled,select:disabled{background:#f3f5f1;color:var(--texte-2)}
+input::placeholder,textarea::placeholder{color:#9aa594}
+
+/* Boutons */
+button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--vert);color:#fff;border:1px solid transparent;padding:9px 16px;border-radius:var(--rayon-p);cursor:pointer;font:inherit;font-size:14px;font-weight:600;line-height:1.2;box-shadow:0 1px 2px rgba(20,40,10,.15);transition:background .15s,box-shadow .15s,transform .05s;text-decoration:none;white-space:nowrap}
+button:hover,.btn:hover{background:var(--vert-fonce);color:#fff}
+button:active,.btn:active{transform:translateY(1px)}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid rgba(73,141,30,.45);outline-offset:2px}
+button.petit{padding:5px 11px;font-size:12.5px;border-radius:7px}
+button.danger{background:var(--rouge)}button.danger:hover{background:#9b1c1c}
+button.secondaire,.btn.secondaire{background:#fff;color:var(--vert-fonce);border:1px solid var(--vert)}
+button.secondaire:hover,.btn.secondaire:hover{background:var(--vert);color:#fff}
+.btn-export{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--vert);color:var(--vert-fonce);border-radius:var(--rayon-p);font-weight:600;font-size:13.5px;text-decoration:none;background:#fff;transition:background .15s}
+.btn-export:hover{background:var(--vert);color:#fff}
+form.en-ligne{display:inline-flex;gap:4px;margin:0 4px 0 0}
+
+/* Messages flash et alertes */
+.flash{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;margin-bottom:10px;border-radius:10px;border:1px solid transparent;border-left-width:5px;font-size:14px;line-height:1.45}
+.flash::before{flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;margin-top:-1px}
+.success{background:#e8f6e9}.danger{background:#fdecec}.warning{background:#fff6dc}
+.flash.success{border-color:#bfe3c4;border-left-color:#2e7d32;color:#1b4d1f}.flash.success::before{content:"✓";background:#2e7d32}
+.flash.danger{border-color:#f3c3c3;border-left-color:var(--rouge);color:#7a1717}.flash.danger::before{content:"!";background:var(--rouge)}
+.flash.warning{border-color:#f2dc9c;border-left-color:var(--orange);color:#6b4300}.flash.warning::before{content:"!";background:var(--orange)}
+.flash.info{background:var(--bleu-clair);border-color:#c6d8fb;border-left-color:var(--bleu);color:#1e3a8a}.flash.info::before{content:"i";background:var(--bleu)}
+.flash .fermer{margin-left:auto;background:transparent;color:inherit;opacity:.55;box-shadow:none;padding:0 4px;font-size:18px;line-height:1}
+.flash .fermer:hover{opacity:1;background:transparent;color:inherit}
+.flashes{margin-bottom:6px}
+.flashes .flash{animation:entree .25s ease-out;box-shadow:var(--ombre)}
+@keyframes entree{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#e9ece6;color:#3b4636;white-space:nowrap;line-height:1.4}
+.b-conforme,.b-disponible{background:#dcf5df;color:#166534}.b-vendu{background:#e9ebee;color:#4b5563}.b-réservé{background:#dbeafe;color:#1e40af}
+.b-quarantaine,.b-rappelé{background:#fef1c7;color:#8a4b00}.b-périmé{background:#fde0e0;color:#9b1c1c}
+.b-détruit{background:#dfe2e6;color:#333}.b-enregistrée{background:#dbeafe;color:#1e3a8a}.b-annulée{background:#f6dada;color:#7a1f1f}
+.b-transmise{background:#e0e7ff;color:#3730a3}.b-facturée{background:#fef3c7;color:#92400e}.b-validée{background:#d1fae5;color:#065f46}
+.b-livrée{background:#bbf7d0;color:#14532d}.b-archivée{background:#e5e7eb;color:#374151}.b-émise{background:#dbeafe;color:#1e3a8a}
 .unread{font-weight:bold}
-.cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:14px 0 22px}
-.carte{display:flex;align-items:center;gap:14px;background:#fff;border-radius:12px;padding:16px;
-box-shadow:0 2px 8px rgba(0,0,0,.08);border-left:6px solid var(--vert)}
-.carte .ico{font-size:30px}.carte b{display:block;font-size:26px;line-height:1.1}
-.carte small{color:#556;font-size:12px}
-.c-vert{border-left-color:var(--vert)}.c-bleu{border-left-color:#2b78b8}
-.c-orange{border-left-color:#e8920c;background:#fffaf0}.c-rouge{border-left-color:#c62828;background:#fff4f4}
+.unread td:first-child{box-shadow:inset 4px 0 0 var(--vert)}
+
+/* Cartes indicateurs */
+.cartes{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin:14px 0 24px}
+.carte{--accent:var(--vert);--accent-clair:var(--vert-clair);position:relative;display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--bord);border-radius:14px;padding:16px 18px;box-shadow:var(--ombre);overflow:hidden;color:inherit;text-decoration:none;transition:transform .15s,box-shadow .15s,border-color .15s}
+.carte::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+a.carte:hover{transform:translateY(-2px);box-shadow:var(--ombre-forte);border-color:var(--accent);color:inherit}
+.carte .ico{flex:none;width:50px;height:50px;border-radius:12px;background:var(--accent-clair);display:flex;align-items:center;justify-content:center;font-size:24px}
+.carte b{display:block;font-size:26px;line-height:1.1;font-weight:800;color:var(--texte);font-variant-numeric:tabular-nums}
+.carte small{display:block;color:var(--texte-2);font-size:12.5px;margin-top:3px;line-height:1.35}
+.carte .fleche{margin-left:auto;color:var(--texte-3);font-size:18px;transition:transform .15s}
+a.carte:hover .fleche{transform:translateX(3px);color:var(--accent)}
+.c-vert{--accent:var(--vert);--accent-clair:var(--vert-clair)}
+.c-bleu{--accent:var(--bleu);--accent-clair:var(--bleu-clair)}
+.c-orange{--accent:var(--orange);--accent-clair:#fde9c4;background:#fffbf3}.c-orange b{color:#9a5400}
+.c-rouge{--accent:var(--rouge);--accent-clair:#f9d6d6;background:#fff8f8}.c-rouge b{color:var(--rouge)}
+.rapport-carte{align-items:flex-start;flex-direction:column}
+.rapport-carte small{display:block;margin:4px 0 10px;color:var(--texte-2)}
+.rapport-carte label{margin-bottom:10px}
+.rapport-carte .boutons{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Panneaux et grilles */
 .deux-col{display:grid;grid-template-columns:3fr 2fr;gap:22px}
 .deux-col.egal{grid-template-columns:1fr 1fr;margin-top:8px}
 .deux-col.egal .panneau:only-child{grid-column:1/-1}
-.panneau{background:#fff;border-radius:12px;padding:6px 16px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.panneau h2{font-size:15px;margin:12px 0 4px;color:var(--vert-nuit)}
-@media(max-width:900px){.deux-col{grid-template-columns:1fr}}
-.barre{background:#e3e8df;border-radius:8px;height:10px;min-width:90px;overflow:hidden}
-.rempli{height:100%;border-radius:8px}.rempli.ok{background:var(--vert)}.rempli.bas{background:#c62828}
-td small{color:#667}
+.panneau{background:var(--surface);border:1px solid var(--bord);border-radius:14px;padding:8px 18px 14px;box-shadow:var(--ombre)}
+.panneau h2{font-size:15px;margin:12px 0 8px;color:var(--vert-nuit)}
+@media(max-width:1100px){.deux-col,.deux-col.egal{grid-template-columns:1fr}}
+.barre{background:#e6ebe2;border-radius:8px;height:9px;min-width:90px;overflow:hidden}
+.rempli{height:100%;border-radius:8px;transition:width .6s ease}.rempli.ok{background:linear-gradient(90deg,#6bb33a,var(--vert))}.rempli.bas{background:linear-gradient(90deg,#e45a5a,var(--rouge))}
 .mdp-box{background:#fffbe6;border:2px dashed #e8920c;padding:14px 16px;border-radius:10px;margin:12px 0}
 .mdp-box code{font-size:22px;background:#fff;padding:3px 10px;border-radius:5px;letter-spacing:1.5px;user-select:all}
-form.en-ligne{display:inline-flex;gap:4px;margin:0 4px 0 0}
-button.petit{padding:4px 10px;font-size:12px}button.danger{background:#c62828}button.danger:hover{background:#9b1c1c}
-.filtres{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;background:#fff;padding:12px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin:10px 0}
-.filtres input,.filtres select{padding:7px;font-size:13px}
-.filtres label{font-size:12px;color:#556;display:flex;flex-direction:column;gap:2px}
-.filtres label.case{flex-direction:row;align-items:center;gap:5px;font-size:13px;color:#222}
-.filtres .grand{flex:1 1 230px}
-.lien-reset{font-size:13px;color:var(--vert-fonce);align-self:center}
-.compte{color:#556;font-size:13px;margin:4px 0 10px}
-input.recherche{width:100%;max-width:380px;margin:4px 0 10px}
-.actions-bon{max-width:820px;margin:0 auto 12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+
+/* Filtres et recherche */
+.filtres{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--surface);padding:14px;border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre);margin:10px 0 12px}
+.filtres input,.filtres select{padding:8px 10px;font-size:13.5px}
+.filtres label{font-size:12px;color:var(--texte-2);display:flex;flex-direction:column;gap:3px}
+.filtres label.case{flex-direction:row;align-items:center;gap:6px;font-size:13.5px;color:var(--texte);font-weight:500;padding-bottom:8px}
+.filtres .grand{flex:1 1 240px}
+.lien-reset{font-size:13px;color:var(--texte-2);align-self:center;padding:0 4px}
+.compte{color:var(--texte-2);font-size:13.5px;margin:6px 0 12px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+input.recherche{width:100%;max-width:400px;margin:4px 0 12px;padding-left:12px}
+
+/* Onglets */
+.onglets{display:flex;gap:4px;margin:10px 0 16px;flex-wrap:wrap;background:#e7eee1;padding:4px;border-radius:11px;width:fit-content;max-width:100%}
+.onglets a{padding:8px 18px;border-radius:8px;color:var(--vert-nuit);text-decoration:none;font-weight:600;font-size:14px;transition:background .15s}
+.onglets a:hover{background:rgba(255,255,255,.6)}
+.onglets a.actif{background:#fff;color:var(--vert-fonce);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.rapide{border:1px solid #bcd9a6;border-radius:var(--rayon);padding:4px 18px 14px;background:linear-gradient(180deg,#f4faee,#fff);margin-bottom:18px;box-shadow:var(--ombre)}
+.rapide h2{margin:12px 0 4px}
+.indice{font-size:12px;color:var(--texte-2);min-height:16px;grid-column:1/-1}.indice.alerte{color:#9b1c1c;font-weight:bold}
+.total-gros{font-size:22px;font-weight:800;color:var(--vert-nuit)}
+
+/* Documents imprimables : bon de livraison */
+.actions-bon{max-width:820px;margin:0 auto 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .actions-bon small{color:#667}
-.bon{position:relative;max-width:820px;margin:0 auto;background:#fff;padding:28px 32px;border-radius:6px;box-shadow:0 2px 14px rgba(0,0,0,.15);overflow:hidden}
+.bon{position:relative;max-width:820px;margin:0 auto;background:#fff;padding:28px 32px;border-radius:8px;box-shadow:0 2px 18px rgba(0,0,0,.13);overflow:hidden}
 .bon .filigrane{position:absolute;left:50%;top:50%;width:68%;transform:translate(-50%,-50%);opacity:.07;pointer-events:none}
 .bon-entete,.bon-infos,.bon-table,.bon-sign,.bon-pied{position:relative}
 .bon-entete{display:flex;align-items:center;gap:18px;border-bottom:3px solid var(--vert);padding-bottom:14px}
@@ -4581,22 +4715,18 @@ input.recherche{width:100%;max-width:380px;margin:4px 0 10px}
 .bon-infos{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
 .bon-infos>div{border:1px solid #cfd8c8;border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.5}
 .bon-infos h3{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--vert-fonce)}
-.bon-table{box-shadow:none;background:transparent}
+.bon-table{box-shadow:none;background:transparent;border:0;border-radius:0;border-collapse:collapse;overflow:visible}
 .bon-table td,.bon-table th{padding:8px 10px}
+.bon-table td{border-bottom:1px solid #ddd}
 .bon-table td small{color:#667}
 .bon-table .num{text-align:right;white-space:nowrap}
 .bon-table tfoot td{font-weight:bold;background:#e4efdb;border-top:2px solid var(--vert)}
 .bon-sign{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:40px}
 .bon-sign>div{border-top:1px solid #333;padding-top:6px;text-align:center;font-size:13px;height:90px}
 .bon-pied{margin-top:20px;font-size:11px;color:#667;text-align:center;border-top:1px solid #dde5d6;padding-top:8px}
-.onglets{display:flex;gap:6px;margin:10px 0 14px;flex-wrap:wrap}
-.onglets a{padding:9px 18px;border-radius:8px 8px 0 0;background:#e4efdb;color:var(--vert-nuit);text-decoration:none;font-weight:bold;border-bottom:3px solid transparent}
-.onglets a.actif{background:var(--vert);color:#fff;border-bottom-color:var(--vert-nuit)}
-.rapide{border:2px solid var(--vert);border-radius:10px;padding:4px 16px 12px;background:#f4faee;margin-bottom:18px}
-.rapide h2{margin:10px 0 0}
-.indice{font-size:12px;color:#556;min-height:16px;grid-column:1/-1}.indice.alerte{color:#9b1c1c;font-weight:bold}
-.total-gros{font-size:20px;font-weight:bold;color:var(--vert-nuit)}
-.fact{position:relative;max-width:780px;margin:0 auto;background:#fff;padding:26px 30px 18px;border-radius:6px;box-shadow:0 2px 14px rgba(0,0,0,.15);overflow:hidden;color:#111}
+
+/* Documents imprimables : facture */
+.fact{position:relative;max-width:780px;margin:0 auto;background:#fff;padding:26px 30px 18px;border-radius:8px;box-shadow:0 2px 18px rgba(0,0,0,.13);overflow:hidden;color:#111}
 .fact .filigrane{position:absolute;left:50%;top:55%;width:60%;transform:translate(-50%,-50%);opacity:.06;pointer-events:none}
 .fact>*{position:relative}
 .fact-tete{display:flex;gap:18px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
@@ -4606,7 +4736,7 @@ input.recherche{width:100%;max-width:380px;margin:4px 0 10px}
 .fact-cadre .ecrit{border-bottom:1px dotted #555;display:inline-block;min-width:150px;font-weight:bold;padding:0 4px}
 .fact-ligne{display:flex;align-items:center;gap:12px;margin-top:4px}
 .fact-badge{background:#333;color:#fff;font-weight:bold;font-size:18px;padding:2px 16px;border-radius:6px;letter-spacing:1px}
-.fact-table{width:100%;border-collapse:collapse;margin-top:16px;box-shadow:none;background:transparent;font-size:14px}
+.fact-table{width:100%;border-collapse:collapse;margin-top:16px;box-shadow:none;background:transparent;font-size:14px;border:0;border-radius:0;overflow:visible}
 .fact-table th{background:#333;color:#fff;padding:6px 8px;border:2px solid #333;font-size:12px;letter-spacing:.5px}
 .fact-table td{border:1px solid #444;padding:5px 8px;height:25px}
 .fact-table .num{text-align:right;white-space:nowrap}
@@ -4615,97 +4745,154 @@ input.recherche{width:100%;max-width:380px;margin:4px 0 10px}
 .fact-paiement{font-size:12.5px;margin:4px 0 0;color:#333}
 .fact-sign{display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin:18px 6px 56px;font-weight:bold;font-size:13px}
 .fact-pied{border-top:1px solid #999;padding-top:6px;font-size:11px;text-align:center;color:#333}
-@media(max-width:640px){.fact{padding:14px}.fact-table{font-size:12px}.fact-cadre{max-width:none}}
-@media print{.fact{box-shadow:none;border-radius:0;padding:0;max-width:none}.fact-table th,.fact-badge{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-@media(max-width:640px){.bon{padding:16px}.bon-entete{flex-wrap:wrap}.bon-infos,.bon-sign{grid-template-columns:1fr}.bon-table{font-size:12px}}
-@media print{nav,.no-print,.flash,.pied{display:none!important}
-body{background:#fff!important}body::before{display:none!important}
-main{max-width:none;margin:0;padding:0}
-.bon{box-shadow:none;border-radius:0;padding:0;max-width:none}
-th,.bon-table tfoot td,.bon-entete{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.bon-table tr{break-inside:avoid}}
-@page{size:A4;margin:14mm}
-.b-détruit{background:#d9dce0;color:#333}
-.b-enregistrée{background:#dbeafe;color:#1e3a8a}
-.b-annulée{background:#f3d6d6;color:#7a1f1f}
-.bloc-cmd fieldset{border:1px solid #cfd8c8;border-radius:10px;padding:12px 14px;margin:14px 0;background:#fff}
-.bloc-cmd legend{font-weight:bold;color:var(--vert-fonce);padding:0 6px}
-.grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
-.grille label{display:flex;flex-direction:column;font-size:12px;color:#556;gap:2px}
+.tampon-annule{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);font-size:84px;font-weight:bold;color:rgba(198,40,40,.28);border:8px solid rgba(198,40,40,.28);padding:0 24px;border-radius:12px;z-index:2;pointer-events:none}
+@media(max-width:640px){.fact{padding:14px}.fact-table{font-size:12px}.fact-cadre{max-width:none}
+.bon{padding:16px}.bon-entete{flex-wrap:wrap}.bon-infos,.bon-sign{grid-template-columns:1fr}.bon-table{font-size:12px}}
+
+/* Commandes : saisie et circuit */
+.bloc-cmd fieldset{border:1px solid var(--bord);border-radius:var(--rayon);padding:14px 16px;margin:14px 0;background:#fff;box-shadow:var(--ombre)}
+.bloc-cmd legend{font-weight:700;color:var(--vert-fonce);padding:0 8px;font-size:15px}
+.grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.grille label{display:flex;flex-direction:column;font-size:12.5px;color:var(--texte-2);gap:4px}
 .table-lignes select{width:100%}.table-lignes td{padding:6px}
 .table-lignes input.l-qte{width:90px}.table-lignes input.l-prix{width:120px}
 .table-lignes .num{text-align:right;white-space:nowrap}
 @media(max-width:700px){
-.table-lignes,.table-lignes tbody{display:block;overflow:visible}
+.table-lignes,.table-lignes tbody{display:block;overflow:visible;border:0;box-shadow:none;background:transparent}
 .table-lignes thead{display:none}
 .table-lignes tr.ligne-cmd{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;border:1px solid #cfd8c8;border-radius:8px;padding:8px;margin-bottom:8px;background:#fff}
-.table-lignes td{display:block;padding:0}
+.table-lignes td{display:block;padding:0;border:0}
 .table-lignes td:first-child{grid-column:1/-1}
 .table-lignes td.l-montant{grid-column:1/3;text-align:left}
 .table-lignes input.l-qte,.table-lignes input.l-prix{width:100%}
 }
-.b-transmise{background:#e0e7ff;color:#3730a3}
-.b-facturée{background:#fef3c7;color:#92400e}
-.b-validée{background:#d1fae5;color:#065f46}
-.b-livrée{background:#bbf7d0;color:#14532d}
-.b-archivée{background:#e5e7eb;color:#374151}
-.b-émise{background:#dbeafe;color:#1e3a8a}
-.etapes{list-style:none;display:flex;gap:6px;padding:0;margin:8px 0 14px;flex-wrap:wrap}
-.etapes li{flex:1 1 100px;background:#fff;border:1px solid #cfd8c8;border-radius:10px;padding:8px 10px;font-size:12px;display:flex;flex-direction:column;gap:3px}
-.etapes .pastille{width:22px;height:22px;border-radius:50%;background:#cfd8c8;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold}
-.etapes li.fait{border-color:var(--vert);background:#f3f8ee}.etapes li.fait .pastille{background:var(--vert)}
-.etapes li.courant{border-color:#e8920c;background:#fffaf0;box-shadow:0 0 0 2px #f5d49a}.etapes li.courant .pastille{background:#e8920c}
-.etapes small{color:#667}
+.etapes{list-style:none;display:flex;gap:8px;padding:0;margin:8px 0 16px;flex-wrap:wrap}
+.etapes li{flex:1 1 110px;background:#fff;border:1px solid var(--bord);border-radius:12px;padding:10px 12px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--ombre)}
+.etapes .pastille{width:26px;height:26px;border-radius:50%;background:#cfd8c8;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:bold}
+.etapes li.fait{border-color:#a9d18e;background:#f3f9ee}.etapes li.fait .pastille{background:var(--vert)}
+.etapes li.courant{border-color:#e8920c;background:#fffaf0;box-shadow:0 0 0 3px #f8e1b5}.etapes li.courant .pastille{background:#e8920c}
+.etapes small{color:var(--texte-2)}
 .circuit{max-width:820px;margin:0 auto 14px}
 .panneau-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0 4px}
 .panneau-actions form{margin:0}
 .renvoi{display:flex;gap:6px;flex-wrap:wrap}.renvoi input{min-width:260px}
 .attente{margin:0;color:#7a5200}
-.alerte-circuit{background:#f8d7da;padding:10px 14px;border-radius:8px;margin:0}
-ul.docs{list-style:none;padding:0;margin:0 0 10px}ul.docs li{padding:4px 0}
-.tampon-annule{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);font-size:84px;font-weight:bold;color:rgba(198,40,40,.28);border:8px solid rgba(198,40,40,.28);padding:0 24px;border-radius:12px;z-index:2;pointer-events:none}
-.rapport-carte{align-items:flex-start;flex-direction:column}
-.rapport-carte small{display:block;margin:4px 0 8px;color:#556}
-.rapport-carte label{display:flex;flex-direction:column;font-size:12px;color:#556;gap:2px;margin-bottom:8px}
-.rapport-carte .boutons{display:flex;gap:8px;flex-wrap:wrap}
-button.secondaire{background:#fff;color:var(--vert-fonce);border:2px solid var(--vert)}
-button.secondaire:hover{background:var(--vert);color:#fff}
-.btn-export{display:inline-block;padding:8px 14px;border:2px solid var(--vert);color:var(--vert-fonce);
-border-radius:4px;font-weight:600;text-decoration:none;background:#fff}
-.btn-export:hover{background:var(--vert);color:#fff}
-body.login::before{opacity:.22;background-position:center;background-size:min(95vw,900px)}
-.login-wrap{min-height:calc(100vh - 120px);display:flex;align-items:center;justify-content:center}
-.login-card{background:rgba(255,255,255,.94);width:100%;max-width:400px;padding:30px 30px 22px;border-radius:16px;
-box-shadow:0 12px 40px rgba(29,67,16,.25);border-top:5px solid var(--vert);text-align:center}
-.login-card img{width:170px;max-width:60%;margin-bottom:6px}
-.login-card h1{font-size:20px;margin:4px 0 2px}
-.login-card .sous{color:#5b6b52;font-size:13px;margin:0 0 18px}
-.login-card form{display:flex;flex-direction:column;gap:12px;text-align:left}
-.login-card button{padding:11px;font-size:15px}
-</style></head><body class="{% block bodyclass %}{% endblock %}">
-{% if session.user %}{% set r = session.user.role %}
-<nav><a class="brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename='logo.png') }}" alt="ISRA"> UPVac</a>
-<button type="button" class="burger" aria-label="Ouvrir le menu" aria-expanded="false"
-onclick="var n=this.closest('nav');var o=n.classList.toggle('ouvert');this.setAttribute('aria-expanded',o);this.textContent=o?'✕':'☰'">☰</button>
-<div class="liens">{% set ep = request.endpoint or '' %}
-<a href="{{ url_for('index') }}" {% if ep == 'index' %}class="actif"{% endif %}>Tableau de bord</a>
-{% if droits.clients_voir %}<a href="{{ url_for('clients') }}" {% if ep.startswith('client') %}class="actif"{% endif %}>Clients</a>{% endif %}
-<a href="{{ url_for('lots') }}" {% if ep.startswith('lot') %}class="actif"{% endif %}>Lot de vaccin</a>
-{% if droits.commandes_voir %}<a href="{{ url_for('commandes') }}" {% if ep.startswith('commande') %}class="actif"{% endif %}>Commandes</a>{% endif %}
-{% if droits.ventes_voir %}<a href="{{ url_for('ventes') }}" {% if ep.startswith('vente') %}class="actif"{% endif %}>Ventes</a>{% endif %}
-{% if droits.ventes_saisir %}<a href="{{ url_for('caisse') }}" {% if ep.startswith('caisse') %}class="actif"{% endif %}>🛒 Caisse</a>{% endif %}
-{% if droits.factures_voir %}<a href="{{ url_for('factures') }}" {% if ep.startswith('facture') %}class="actif"{% endif %}>Factures</a>{% endif %}
-{% if droits.mouvements_voir %}<a href="{{ url_for('mouvements') }}" {% if ep.startswith('mouvement') %}class="actif"{% endif %}>Entrées / sorties</a>{% endif %}
-{% if droits.inventaire_voir %}<a href="{{ url_for('inventaires') }}" {% if ep.startswith('inventaire') %}class="actif"{% endif %}>Inventaire</a>{% endif %}
-{% if droits.articles_voir %}<a href="{{ url_for('articles') }}" {% if ep.startswith('article') %}class="actif"{% endif %}>Articles</a>{% endif %}
-{% if droits.rapports_voir %}<a href="{{ url_for('rapports') }}" {% if ep.startswith('rapport') %}class="actif"{% endif %}>Rapports</a>{% endif %}
-{% if droits.referentiels_voir %}<a href="{{ url_for('referentiels') }}" {% if ep.startswith('referentiel') or ep.startswith('ref_') %}class="actif"{% endif %}>Référentiels</a>{% endif %}
-<a href="{{ url_for('messages') }}" {% if ep.startswith('message') %}class="actif"{% endif %}>Messagerie{% if nb_non_lus %} ({{ nb_non_lus }}){% endif %}</a>
-{% if droits.utilisateurs %}<a href="{{ url_for('utilisateurs') }}" {% if ep.startswith('utilisateur') or ep == 'email_parametres' %}class="actif"{% endif %}>Utilisateurs</a>{% endif %}{% if droits.audit %}<a href="{{ url_for('journal') }}" {% if ep == 'journal' %}class="actif"{% endif %}>Audit</a>{% endif %}{% if droits.reinitialiser %}<a href="{{ url_for('donnees_essai') }}" {% if ep.startswith('donnees') %}class="actif"{% endif %}>Données d'essai</a>{% endif %}
-<span class="right">{{ session.user.username }} ({{ r|role_lib }}) · <a href="{{ url_for('mon_compte') }}">Mon compte</a> · <a href="{{ url_for('mot_de_passe') }}">Mot de passe</a> · <a href="{{ url_for('logout') }}">Déconnexion</a></span>
-</div></nav>{% endif %}
-<main>{% for cat, m in get_flashed_messages(with_categories=true) %}
-<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+.alerte-circuit{background:#fdecec;padding:10px 14px;border-radius:8px;margin:0;border-left:4px solid var(--rouge)}
+ul.docs{list-style:none;padding:0;margin:0 0 10px}ul.docs li{padding:5px 0}
+
+/* Tableau de bord */
+.entete-page{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 24px;margin:4px 0 20px}
+.entete-page h1{margin:0}
+.entete-page p{margin:4px 0 0;color:var(--texte-2)}
+.entete-page .actions{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px}
+.section-titre{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--texte-3);margin:22px 0 -4px}
+.liste-alertes{max-height:360px;overflow-y:auto;padding-right:4px}
+.resume-alertes{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.legende-graph{font-size:12px;color:var(--texte-2);margin:-4px 0 6px}
+
+/* ------------------------------------------------ Connexion */
+body.login{background:linear-gradient(135deg,#eef5e8 0%,#dfead5 100%)}
+body.login::before{opacity:.10;background-position:right -8% center;background-size:min(70vw,780px)}
+body.login main{max-width:1040px}
+.login-wrap{min-height:calc(100vh - 110px);display:flex;align-items:center;justify-content:center;padding:20px 0}
+.login-boite{display:grid;grid-template-columns:1.05fr 1fr;width:100%;max-width:940px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(29,67,16,.22)}
+.login-marque{position:relative;padding:44px 40px;color:#fff;background:linear-gradient(150deg,#2f6b14 0%,#1d4310 60%,#132e08 100%);display:flex;flex-direction:column;justify-content:space-between;gap:28px;overflow:hidden}
+.login-marque::after{content:"";position:absolute;right:-90px;bottom:-90px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.06)}
+.login-marque::before{content:"";position:absolute;right:40px;top:-60px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05)}
+.login-marque img{width:120px;background:#fff;border-radius:14px;padding:8px 10px}
+.login-marque h2{color:#fff;font-size:28px;margin:18px 0 6px;line-height:1.2}
+.login-marque p{color:#cfe3c0;margin:0;font-size:15px}
+.login-marque ul{list-style:none;padding:0;margin:0;display:grid;gap:10px;font-size:14px;color:#e4f0db}
+.login-marque li{display:flex;gap:10px;align-items:center}
+.login-marque li span{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.12);display:inline-flex;align-items:center;justify-content:center}
+.login-card{padding:44px 40px 34px;display:flex;flex-direction:column;justify-content:center}
+.login-card h1{font-size:24px;margin:0 0 4px}
+.login-card .sous{color:var(--texte-2);font-size:14px;margin:0 0 24px}
+.login-card form{display:flex;flex-direction:column;gap:16px;text-align:left}
+.login-card input{padding:12px 13px;font-size:15px}
+.login-card button{padding:13px;font-size:15.5px;margin-top:4px}
+.champ-mdp{position:relative;display:block}
+.champ-mdp input{width:100%;padding-right:46px}
+.champ-mdp button{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:transparent;color:var(--texte-2);box-shadow:none;padding:6px 8px;margin:0;font-size:16px}
+.champ-mdp button:hover{background:var(--vert-clair);color:var(--vert-nuit)}
+.login-card .aide{font-size:12.5px;color:var(--texte-3);margin:18px 0 0;text-align:center}
+@media(max-width:820px){.login-boite{grid-template-columns:1fr}.login-marque{padding:28px 26px}.login-marque ul{display:none}.login-card{padding:30px 26px}}
+
+/* ------------------------------------------------ Responsive */
+@media(max-width:1000px){
+body.avec-menu{padding-left:0}
+.sidebar{transform:translateX(-100%);transition:transform .22s ease;width:min(86vw,var(--menu))}
+body.menu-ouvert .sidebar{transform:none}
+body.menu-ouvert .voile{display:block;position:fixed;inset:0;z-index:45;background:rgba(10,25,5,.45)}
+body.menu-ouvert{overflow:hidden}
+button.burger{display:inline-flex}
+.topbar{padding:0 14px}
+main{padding:0 14px;margin-top:18px}
+.profil .qui,.profil .chevron{display:none}
+details.profil summary{padding:3px}
+}
+@media(max-width:600px){.topbar .jour{display:none}h1{font-size:22px}.cartes{grid-template-columns:1fr 1fr;gap:10px}
+.carte{padding:12px;gap:10px;flex-direction:column;align-items:flex-start}.carte .ico{width:40px;height:40px;font-size:20px}.carte b{font-size:21px}.carte .fleche{display:none}
+.rapport-carte{grid-column:1/-1}}
+
+/* ------------------------------------------------ Impression */
+@media print{.sidebar,.topbar,.voile,.no-print,.flash,.flashes,.pied,#inactif{display:none!important}
+body,body.avec-menu{background:#fff!important;padding:0!important}body::before{display:none!important}
+main{max-width:none;margin:0;padding:0}
+table,.table-wrap{box-shadow:none!important}
+.bon{box-shadow:none;border-radius:0;padding:0;max-width:none}
+.fact{box-shadow:none;border-radius:0;padding:0;max-width:none}
+th,.bon-table tfoot td,.bon-entete,.fact-table th,.fact-badge{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.bon-table tr{break-inside:avoid}}
+@page{size:A4;margin:14mm}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style></head>
+<body class="{% if session.user %}avec-menu {% endif %}{% block bodyclass %}{% endblock %}">
+{% macro lien(url, actif, ico, texte, nb=0) %}<a href="{{ url }}"{% if actif %} class="actif" aria-current="page"{% endif %}><span class="i" aria-hidden="true">{{ ico }}</span><span>{{ texte }}</span>{% if nb %}<span class="pastille-nb">{{ nb }}</span>{% endif %}</a>{% endmacro %}
+{% if session.user %}{% set r = session.user.role %}{% set ep = request.endpoint or '' %}
+<aside class="sidebar" id="menu" aria-label="Menu principal">
+<a class="brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename='logo.png') }}" alt="ISRA"><span><b>UPVac</b><small>Gestion des vaccins · ISRA</small></span></a>
+<nav class="liens">
+<div class="groupe">Pilotage</div>
+{{ lien(url_for('index'), ep == 'index', '🏠', 'Tableau de bord') }}
+{% if droits.rapports_voir %}{{ lien(url_for('rapports'), ep.startswith('rapport'), '📊', 'Rapports') }}{% endif %}
+<div class="groupe">Stock</div>
+{{ lien(url_for('lots'), ep.startswith('lot') or ep.startswith('vaccin'), '💉', 'Vaccins & lots') }}
+{% if droits.mouvements_voir %}{{ lien(url_for('mouvements'), ep.startswith('mouvement'), '🔁', 'Entrées / sorties') }}{% endif %}
+{% if droits.inventaire_voir %}{{ lien(url_for('inventaires'), ep.startswith('inventaire'), '📋', 'Inventaire') }}{% endif %}
+{% if droits.articles_voir %}{{ lien(url_for('articles'), ep.startswith('article'), '🧰', 'Articles') }}{% endif %}
+{% if droits.clients_voir or droits.commandes_voir or droits.ventes_voir or droits.ventes_saisir or droits.factures_voir %}<div class="groupe">Commercial</div>{% endif %}
+{% if droits.ventes_saisir %}{{ lien(url_for('caisse'), ep.startswith('caisse'), '🛒', 'Caisse') }}{% endif %}
+{% if droits.commandes_voir %}{{ lien(url_for('commandes'), ep.startswith('commande'), '🧾', 'Commandes') }}{% endif %}
+{% if droits.ventes_voir %}{{ lien(url_for('ventes'), ep.startswith('vente'), '💰', 'Ventes') }}{% endif %}
+{% if droits.factures_voir %}{{ lien(url_for('factures'), ep.startswith('facture'), '📄', 'Factures') }}{% endif %}
+{% if droits.clients_voir %}{{ lien(url_for('clients'), ep.startswith('client'), '👥', 'Clients') }}{% endif %}
+<div class="groupe">Communication</div>
+{{ lien(url_for('messages'), ep.startswith('message'), '✉️', 'Messagerie', nb_non_lus) }}
+{% if droits.referentiels_voir or droits.utilisateurs or droits.audit or droits.reinitialiser %}<div class="groupe">Administration</div>{% endif %}
+{% if droits.referentiels_voir %}{{ lien(url_for('referentiels'), ep.startswith('referentiel') or ep.startswith('ref_'), '🗂️', 'Référentiels') }}{% endif %}
+{% if droits.utilisateurs %}{{ lien(url_for('utilisateurs'), ep.startswith('utilisateur') or ep.startswith('email_'), '🔐', 'Utilisateurs') }}{% endif %}
+{% if droits.audit %}{{ lien(url_for('journal'), ep == 'journal', '🕵️', 'Audit') }}{% endif %}
+{% if droits.reinitialiser %}{{ lien(url_for('donnees_essai'), ep.startswith('donnees'), '🧪', "Données d'essai") }}{% endif %}
+</nav>
+<div class="bas-menu">© {{ annee }} UPVac · ISRA</div>
+</aside>
+<div class="voile" onclick="document.body.classList.remove('menu-ouvert')"></div>
+<header class="topbar">
+<button type="button" class="burger" aria-label="Ouvrir le menu" aria-controls="menu" aria-expanded="false"
+onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('aria-expanded',o)">☰</button>
+<div class="jour">{{ jour_fr }}</div>
+<div class="outils">
+<a class="icone-btn" href="{{ url_for('messages') }}" title="Messagerie" aria-label="Messagerie{% if nb_non_lus %}, {{ nb_non_lus }} non lu(s){% endif %}">✉️{% if nb_non_lus %}<span class="nb">{{ nb_non_lus }}</span>{% endif %}</a>
+<details class="profil"><summary><span class="avatar">{{ session.user.username[:1] }}</span><span class="qui"><b>{{ session.user.username }}</b><small>{{ r|role_lib }}</small></span><span class="chevron">▼</span></summary>
+<div class="menu">
+<a href="{{ url_for('mon_compte') }}">👤 Mon compte</a>
+<a href="{{ url_for('mot_de_passe') }}">🔑 Mot de passe</a>
+<hr><a class="sortie" href="{{ url_for('logout') }}">⏻ Déconnexion</a>
+</div></details>
+</div></header>{% endif %}
+<main>{% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes no-print" role="status">{% for cat, m in msgs %}
+<div class="flash {{ cat }}"><span>{{ m }}</span><button type="button" class="fermer" aria-label="Fermer" onclick="this.parentNode.remove()">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
 {% block content %}{% endblock %}</main>
 <footer class="pied">UPVac · ISRA — Gestion de stock des vaccins · © {{ annee }}</footer>
 <script>
@@ -4722,10 +4909,30 @@ onclick="var n=this.closest('nav');var o=n.classList.toggle('ouvert');this.setAt
       });
     });
   });
+  // tableaux larges : défilement horizontal propre au lieu de déborder de la page
+  document.querySelectorAll('main table').forEach(function(t){
+    if(t.closest('.fact,.bon,.table-wrap')||t.classList.contains('table-lignes')){return;}
+    var w=document.createElement('div'); w.className='table-wrap';
+    t.parentNode.insertBefore(w,t); w.appendChild(t);
+  });
+  // les messages de succès disparaissent seuls après quelques secondes
+  document.querySelectorAll('.flashes .flash.success').forEach(function(f){
+    setTimeout(function(){f.style.transition='opacity .4s';f.style.opacity='0';setTimeout(function(){f.remove();},450);},6000);
+  });
+  // fermeture du menu mobile et du menu profil
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){document.body.classList.remove('menu-ouvert');
+      document.querySelectorAll('details.profil[open]').forEach(function(d){d.removeAttribute('open');});}
+  });
+  document.addEventListener('click',function(e){
+    document.querySelectorAll('details.profil[open]').forEach(function(d){if(!d.contains(e.target)){d.removeAttribute('open');}});
+  });
+  var actif=document.querySelector('.sidebar .liens a.actif');
+  if(actif&&actif.scrollIntoView){actif.scrollIntoView({block:'nearest'});}
 })();
 </script>
 {% if session.user %}
-<div id="inactif" style="display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:#8a1c1c;color:#fff;padding:12px 18px;border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.35);font-size:14px;max-width:90%;text-align:center">
+<div id="inactif" style="display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:#8a1c1c;color:#fff;padding:12px 18px;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.35);font-size:14px;max-width:90%;text-align:center">
 Sans activité, vous allez être déconnecté dans <b id="inactif-sec">60</b> s. Bougez la souris ou touchez l'écran pour rester connecté.</div>
 <script>
 (function(){
@@ -4756,55 +4963,86 @@ Sans activité, vous allez être déconnecté dans <b id="inactif-sec">60</b> s.
 </body></html>"""
 
 LOGIN = """{% extends 'base.html' %}{% block bodyclass %}login{% endblock %}{% block content %}
-<div class="login-wrap"><div class="login-card">
-<img src="{{ url_for('static', filename='logo.png') }}" alt="Logo ISRA - UPVac">
-<h1>GESVac</h1>
-<p class="sous">Gestion de stock-Commande-Vente</p>
+<div class="login-wrap"><div class="login-boite">
+<div class="login-marque">
+<div><img src="{{ url_for('static', filename='logo.png') }}" alt="Logo ISRA - UPVac">
+<h2>GESVac</h2><p>Plateforme de gestion des vaccins de l'UPVac · ISRA</p></div>
+<ul>
+<li><span>💉</span> Stock des lots et alertes de péremption</li>
+<li><span>🧾</span> Commandes, ventes et facturation</li>
+<li><span>📊</span> Rapports mensuels et annuels</li>
+</ul>
+</div>
+<div class="login-card">
+<h1>Connexion</h1>
+<p class="sous">Gestion de stock · Commande · Vente</p>
 <form method="post">
-<label>Utilisateur<input name="username" required autofocus autocomplete="username"></label>
-<label>Mot de passe<input name="password" type="password" required autocomplete="current-password"></label>
+<label>Utilisateur<input name="username" required autofocus autocomplete="username" placeholder="Votre identifiant"></label>
+<label>Mot de passe<span class="champ-mdp"><input name="password" id="mdp" type="password" required autocomplete="current-password" placeholder="••••••••">
+<button type="button" aria-label="Afficher le mot de passe" title="Afficher / masquer" onclick="var i=document.getElementById('mdp');var v=i.type==='password';i.type=v?'text':'password';this.textContent=v?'🙈':'👁';this.setAttribute('aria-label',v?'Masquer le mot de passe':'Afficher le mot de passe')">👁</button></span></label>
 <button>Se connecter</button></form>
-</div></div>
+<p class="aide">Mot de passe oublié ? Contactez l'administrateur de la plateforme.</p>
+</div></div></div>
 {% endblock %}"""
 
 INDEX = """{% extends 'base.html' %}{% block content %}
-<h1>Tableau de bord</h1>
+<div class="entete-page">
+<div><h1>Tableau de bord</h1><p>Bonjour <b>{{ session.user.username }}</b>, voici la situation du stock et de l'activité.</p></div>
+<div class="actions no-print">
+{% if droits.ventes_saisir %}<a class="btn" href="{{ url_for('caisse') }}">🛒 Nouvelle vente</a>{% endif %}
+{% if droits.commandes_saisir %}<a class="btn secondaire" href="{{ url_for('commande_nouvelle') }}">🧾 Nouvelle commande</a>{% endif %}
+{% if peut_gerer %}<a class="btn secondaire" href="{{ url_for('lots') }}">📦 Réception de lot</a>{% endif %}
+{% if droits.rapports_voir %}<a class="btn secondaire" href="{{ url_for('rapports') }}">📊 Rapports</a>{% endif %}
+</div></div>
+
+<div class="section-titre">Stock</div>
 <div class="cartes">
-<div class="carte c-vert"><span class="ico">💉</span><div><b>{{ stats.doses }}</b><small>Doses vendables en stock</small></div></div>
-<div class="carte c-bleu"><span class="ico">📦</span><div><b>{{ stats.lots }}</b><small>Lots en stock ({{ stats.nb_vaccins }} vaccins au catalogue)</small></div></div>
-<div class="carte {{ 'c-rouge' if stats.alertes else 'c-vert' }}"><span class="ico">🔔</span><div><b>{{ stats.alertes }}</b><small>Alerte(s) en cours</small></div></div>
-<div class="carte {{ 'c-rouge' if stats.perimes else 'c-vert' }}"><span class="ico">⛔</span><div><b>{{ stats.perimes }}</b><small>Lot(s) périmé(s) avec stock</small></div></div>
-<div class="carte {{ 'c-orange' if stats.proches else 'c-vert' }}"><span class="ico">⏳</span><div><b>{{ stats.proches }}</b><small>Lot(s) expirant sous 30 jours</small></div></div>
-<div class="carte {{ 'c-orange' if stats.bas else 'c-vert' }}"><span class="ico">📉</span><div><b>{{ stats.bas }}</b><small>Vaccin(s) sous le seuil minimal</small></div></div>
-{% if droits.articles_voir %}<div class="carte {{ 'c-orange' if stats.art_bas else 'c-vert' }}"><span class="ico">🧰</span><div><b>{{ stats.art_bas }}</b><small>Article(s) sous le seuil minimal</small></div></div>{% endif %}
-{% if droits.commandes_voir %}<a class="carte {{ 'c-orange' if stats.commandes else 'c-bleu' }}" href="{{ url_for('commandes', a_traiter=1) }}" style="text-decoration:none;color:inherit"><span class="ico">🧾</span><div><b>{{ stats.commandes }}</b><small>{{ stats.commandes_libelle }}</small></div></a>{% endif %}
-{% if droits.ventes_voir %}<div class="carte c-bleu"><span class="ico">🛒</span><div><b>{{ stats.ventes }}</b><small>Vente(s) ce mois · montant {{ stats.montant }}</small></div></div>
-<a class="carte {{ 'c-orange' if stats.nb_retard else 'c-bleu' }}" href="{{ url_for('ventes', mode='terme', statut='impayees') }}" style="text-decoration:none;color:inherit"><span class="ico">💳</span><div><b>{{ stats.a_encaisser }}</b><small>{{ devise }} à encaisser (ventes à terme){% if stats.nb_retard %} · {{ stats.nb_retard }} en retard{% endif %}</small></div></a>{% endif %}
-{% if droits.ventes_saisir %}<a class="carte c-vert" href="{{ url_for('caisse') }}" style="text-decoration:none;color:inherit"><span class="ico">⚡</span><div><b>Caisse</b><small>Vente au comptant ou à terme</small></div></a>{% endif %}
-<div class="carte {{ 'c-orange' if stats.non_lus else 'c-bleu' }}"><span class="ico">✉️</span><div><b>{{ stats.non_lus }}</b><small>Message(s) non lu(s)</small></div></div>
+<a class="carte c-vert" href="{{ url_for('lots', stock=1) }}"><span class="ico">💉</span><div><b>{{ stats.doses|nombre }}</b><small>Doses vendables en stock</small></div><span class="fleche">›</span></a>
+<a class="carte c-bleu" href="{{ url_for('lots', stock=1) }}"><span class="ico">📦</span><div><b>{{ stats.lots }}</b><small>Lots en stock · {{ stats.nb_vaccins }} vaccin(s) au catalogue</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-rouge' if stats.perimes else 'c-vert' }}" href="{{ url_for('lots', delai='perimes', stock=1) }}"><span class="ico">⛔</span><div><b>{{ stats.perimes }}</b><small>Lot(s) périmé(s) avec stock</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-orange' if stats.proches else 'c-vert' }}" href="{{ url_for('lots', delai='30', stock=1) }}"><span class="ico">⏳</span><div><b>{{ stats.proches }}</b><small>Lot(s) expirant sous 30 jours</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-orange' if stats.bas else 'c-vert' }}" href="#stock-vaccins"><span class="ico">📉</span><div><b>{{ stats.bas }}</b><small>Vaccin(s) sous le seuil minimal</small></div><span class="fleche">›</span></a>
+{% if droits.articles_voir %}<a class="carte {{ 'c-orange' if stats.art_bas else 'c-vert' }}" href="{{ url_for('articles', etat='bas') }}"><span class="ico">🧰</span><div><b>{{ stats.art_bas }}</b><small>Article(s) sous le seuil minimal</small></div><span class="fleche">›</span></a>{% endif %}
 </div>
 
-<h2 id="alertes">Alertes</h2>
-{% for niveau, texte in alertes %}<div class="flash {{ niveau }}">{{ texte }}</div>
-{% else %}<div class="flash success">Aucune alerte.</div>{% endfor %}
+<div class="section-titre">Activité</div>
+<div class="cartes">
+<a class="carte {{ 'c-rouge' if stats.alertes else 'c-vert' }}" href="#alertes"><span class="ico">🔔</span><div><b>{{ stats.alertes }}</b><small>Alerte(s) en cours</small></div><span class="fleche">›</span></a>
+{% if droits.commandes_voir %}<a class="carte {{ 'c-orange' if stats.commandes else 'c-bleu' }}" href="{{ url_for('commandes', a_traiter=1) }}"><span class="ico">🧾</span><div><b>{{ stats.commandes }}</b><small>{{ stats.commandes_libelle }}</small></div><span class="fleche">›</span></a>{% endif %}
+{% if droits.ventes_voir %}<a class="carte c-bleu" href="{{ url_for('ventes', du=stats.debut_mois) }}"><span class="ico">🛒</span><div><b>{{ stats.ventes }}</b><small>Vente(s) ce mois · {{ stats.montant }} {{ devise }}</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-orange' if stats.nb_retard else 'c-bleu' }}" href="{{ url_for('ventes', mode='terme', statut='impayees') }}"><span class="ico">💳</span><div><b>{{ stats.a_encaisser }}</b><small>{{ devise }} à encaisser (ventes à terme){% if stats.nb_retard %} · {{ stats.nb_retard }} en retard{% endif %}</small></div><span class="fleche">›</span></a>{% endif %}
+<a class="carte {{ 'c-orange' if stats.non_lus else 'c-bleu' }}" href="{{ url_for('messages') }}"><span class="ico">✉️</span><div><b>{{ stats.non_lus }}</b><small>Message(s) non lu(s)</small></div><span class="fleche">›</span></a>
+</div>
 
-<div class="deux-col egal">
-<div class="panneau"><h2>Évolution du stock (doses, fin de mois)</h2>{{ graphique_stock }}</div>
-{% if droits.ventes_voir %}<div class="panneau"><h2>Doses vendues par mois</h2>{{ graphique_ventes }}</div>{% endif %}
+<div class="panneau" id="alertes" style="scroll-margin-top:80px">
+<h2>🔔 Alertes</h2>
+{% set nb_danger = alertes|selectattr(0, 'equalto', 'danger')|list|length %}
+{% if alertes %}<div class="resume-alertes">
+{% if nb_danger %}<span class="badge b-périmé">{{ nb_danger }} critique(s)</span>{% endif %}
+{% if alertes|length - nb_danger %}<span class="badge b-quarantaine">{{ alertes|length - nb_danger }} à surveiller</span>{% endif %}
+</div>{% endif %}
+<div class="liste-alertes">
+{% for niveau, texte in alertes|sort(attribute=0) %}<div class="flash {{ niveau }}"><span>{{ texte }}</span></div>
+{% else %}<div class="flash success"><span>Aucune alerte : tout est en ordre.</span></div>{% endfor %}
+</div></div>
+
+<div class="deux-col egal" style="margin-top:22px">
+<div class="panneau"><h2>📈 Évolution du stock</h2><p class="legende-graph">Doses en stock en fin de mois, 6 derniers mois</p>{{ graphique_stock }}</div>
+{% if droits.ventes_voir %}<div class="panneau"><h2>📊 Doses vendues par mois</h2><p class="legende-graph">Quantités vendues, 6 derniers mois</p>{{ graphique_ventes }}</div>{% endif %}
 </div>
 
 <div class="deux-col">
-<div><h2>Stock vendable par vaccin</h2>
-<table><tr><th>Vaccin</th><th>Stock</th><th>Niveau / seuil minimal</th><th>État</th></tr>
-{% for v in vaccins %}<tr><td>{{ v.nom }}</td><td>{{ v.total }} / {{ v.seuil }}</td>
-<td><div class="barre"><div class="rempli {{ 'bas' if v.bas else 'ok' }}" style="width:{{ v.pct }}%"></div></div></td>
-<td>{% if v.bas %}<span class="badge b-périmé">Bas</span>{% else %}<span class="badge b-conforme">OK</span>{% endif %}</td></tr>
+<div id="stock-vaccins" style="scroll-margin-top:80px"><h2>Stock vendable par vaccin</h2>
+<table><tr><th>Vaccin</th><th class="num">Stock / seuil</th><th>Niveau</th><th>État</th></tr>
+{% for v in vaccins %}<tr><td><b>{{ v.nom }}</b></td><td class="num">{{ v.total|nombre }} / {{ v.seuil|nombre }}</td>
+<td><div class="barre" title="{{ v.pct }} % du seuil minimal"><div class="rempli {{ 'bas' if v.bas else 'ok' }}" style="width:{{ v.pct }}%"></div></div></td>
+<td>{% if v.bas %}<span class="badge b-périmé">Stock bas</span>{% else %}<span class="badge b-conforme">OK</span>{% endif %}</td></tr>
 {% else %}<tr><td colspan="4">Aucun vaccin au catalogue.</td></tr>{% endfor %}</table></div>
 
 <div><h2>Prochaines péremptions</h2>
 <table><tr><th>Vaccin / lot</th><th>Date</th><th>Reste</th></tr>
-{% for p in prochaines %}<tr><td>{{ p.vaccin }}<br><small>Lot {{ p.lot }} · {{ p.stock }} en stock</small></td>
-<td>{{ p.date }}</td>
+{% for p in prochaines %}<tr><td><b>{{ p.vaccin }}</b><br><small>Lot {{ p.lot }} · {{ p.stock|nombre }} en stock</small></td>
+<td>{{ p.date|date_fr }}</td>
 <td><span class="badge {{ 'b-périmé' if p.niveau == 'danger' else 'b-quarantaine' if p.niveau == 'warning' else 'b-conforme' }}">{{ p.jours }} j</span></td></tr>
 {% else %}<tr><td colspan="3">Aucun lot en stock.</td></tr>{% endfor %}</table></div>
 </div>
@@ -4844,7 +5082,7 @@ onsubmit='return confirm({{ ("Supprimer définitivement « " ~ v.nom ~ " » ?" ~
 </table>{% endblock %}"""
 
 LOTS = """{% extends 'base.html' %}{% block content %}
-<h1>Lot de vaccin</h1>
+<h1>Vaccin</h1>
 {% if droits.vaccins_voir %}<p><a href="{{ url_for('vaccins') }}">📚 Catalogue des vaccins et prix unitaires</a></p>{% endif %}
 {% if peut_gerer %}<form class="card" method="post" enctype="multipart/form-data">
 <label>Nom du vaccin<input name="vaccin_nom" id="lot-vaccin" list="liste-vaccins" required maxlength="120" autocomplete="off" placeholder="Taper ou choisir le vaccin"></label>
@@ -4958,12 +5196,12 @@ MOUVEMENTS = """{% extends 'base.html' %}{% block content %}
 <p><small>Réserver des doses pour une structure : elles ne sont plus proposées aux autres clients à la vente ni à la livraison.
 La vente au client concerné utilise sa réservation. Seul le CSA peut réserver ou annuler une réservation.</small></p>
 {% if droits.reservations_gerer %}<form class="card" method="post" action="{{ url_for('mouvement_reservation') }}">
-<label>Lot<select name="lot_id" required>{% for l in lots if l.statut == 'conforme' and l.stock - l.reserve > 0 %}<option value="{{ l.id }}">{{ l.vaccin_nom }} · {{ l.numero_lot }} (non réservé : {{ l.stock - l.reserve }})</option>{% endfor %}</select></label>
+<label>Vaccin<select name="lot_id" required>{% for l in lots if l.statut == 'conforme' and l.stock - l.reserve > 0 %}<option value="{{ l.id }}">{{ l.vaccin_nom }} · {{ l.numero_lot }} (non réservé : {{ l.stock - l.reserve }})</option>{% endfor %}</select></label>
 <label>Client / structure<select name="client_id" required><option value="">— Choisir —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.nom }}</option>{% endfor %}</select></label>
 <label>Quantité à réserver<input name="quantite" type="number" min="1" required></label>
 <label>Note (facultatif)<input name="note" maxlength="200" placeholder="Ex. campagne de vaccination, commande ferme"></label>
 <button>Réserver</button></form>{% endif %}
-<table><tr><th>Date</th><th>Vaccin</th><th>Lot</th><th>Client / structure</th><th>Qté réservée</th><th>Note</th><th>Par</th>{% if droits.reservations_gerer %}<th></th>{% endif %}</tr>
+<table><tr><th>Date</th><th>Vaccin</th><th>N° de lot</th><th>Client / structure</th><th>Qté réservée</th><th>Note</th><th>Par</th>{% if droits.reservations_gerer %}<th></th>{% endif %}</tr>
 {% for r in reservations %}<tr><td>{{ r.date|replace('T', ' ') }}</td><td>{{ r.vaccin_nom }}</td><td>{{ r.numero_lot }}</td><td>{{ r.client }}</td><td>{{ r.quantite }}</td><td>{{ r.note or '' }}</td><td>{{ r.username or '' }}</td>
 {% if droits.reservations_gerer %}<td><form method="post" action="{{ url_for('mouvement_reservation_annuler', rid=r.id) }}" class="en-ligne" onsubmit="return confirm('Annuler cette réservation ?')"><button class="petit danger">Annuler</button></form></td>{% endif %}</tr>
 {% else %}<tr><td colspan="8">Aucune réservation en cours.</td></tr>{% endfor %}</table>
