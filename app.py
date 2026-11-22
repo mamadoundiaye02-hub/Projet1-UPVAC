@@ -558,19 +558,113 @@ def jour_en_lettres(d):
     return f"{JOURS_FR[d.weekday()].capitalize()} {d.day} {MOIS_LONGS[d.month - 1]} {d.year}"
 
 
-ICONES_PAGES = (("index", "🏠"), ("rapport", "📊"), ("lot", "💉"), ("vaccin", "💉"), ("mouvement", "🔁"),
-                ("inventaire", "📋"), ("article", "🧰"), ("caisse", "🛒"), ("commande", "🧾"), ("vente", "💰"),
-                ("facture", "📄"), ("client", "👥"), ("message", "✉️"), ("referentiel", "🗂️"), ("ref_", "🗂️"),
-                ("utilisateur", "🔐"), ("email", "📧"), ("journal", "🕵️"), ("donnees", "🧪"),
-                ("mon_compte", "👤"), ("mot_de_passe", "🔑"))
+# ---------------------------------------------------------------- Icônes de l'interface
+# Jeu d'icônes vectorielles au trait (24 × 24, style inspiré de Lucide, licence ISC) :
+# rendu identique sur tous les postes, contrairement aux émojis.
+ICONES = {
+    "accueil": '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+    "graphique": '<path d="M3 3v18h18"/><path d="M8 17v-5"/><path d="M13 17V8"/><path d="M18 17v-3"/>',
+    "hausse": '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+    "baisse": '<path d="m3 7 6 6 4-4 8 8"/><path d="M15 17h6v-6"/>',
+    "seringue": '<path d="m18 2 4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3a2.4 2.4 0 0 1-3.4 0l-.6-.6a2.4 2.4 0 0 1 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/><path d="m14 4 6 6"/>',
+    "colis": '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/><path d="m7.5 5.5 9 5"/>',
+    "echange": '<path d="M7 7h13"/><path d="m16 3 4 4-4 4"/><path d="M17 17H4"/><path d="m8 21-4-4 4-4"/>',
+    "inventaire": '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 13 2 2 4-4"/>',
+    "outils": '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>',
+    "panier": '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L22 7H6"/>',
+    "recu": '<path d="M4 2v20l2.7-1.5L9.3 22l2.7-1.5 2.7 1.5 2.6-1.5L20 22V2l-2.7 1.5L14.7 2 12 3.5 9.3 2 6.7 3.5z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/>',
+    "billets": '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
+    "fichier": '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/>',
+    "utilisateurs": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+    "utilisateur": '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+    "mail": '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+    "dossier": '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    "bouclier": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
+    "historique": '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+    "fiole": '<path d="M9 3h6"/><path d="M10 3v6l-5.5 9.5A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 1.7-3L14 9V3"/><path d="M7 15h10"/>',
+    "cle": '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3"/><path d="m16 7 3 3"/><path d="m19 4 2 2"/>',
+    "cloche": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    "interdit": '<circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/>',
+    "sablier": '<path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22"/><path d="M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/>',
+    "carte": '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/>',
+    "recherche": '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+    "livre": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+    "telecharger": '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+    "envoyer": '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+    "poubelle": '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>',
+    "gauche": '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+    "imprimante": '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+    "croix": '<path d="M18 6 6 18M6 6l12 12"/>',
+    "coche": '<path d="M20 6 9 17l-5-5"/>',
+    "valide": '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+    "trombone": '<path d="m21.4 11-8.8 8.8a5.5 5.5 0 0 1-7.8-7.8l8.8-8.8a3.7 3.7 0 0 1 5.2 5.2l-8.8 8.8a1.8 1.8 0 0 1-2.6-2.6l8.1-8.1"/>',
+    "plus": '<path d="M12 5v14M5 12h14"/>',
+    "crayon": '<path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+    "archive": '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    "retour": '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    "alerte": '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    "calendrier": '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    "lune": '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    "soleil": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    "menu": '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    "sortie": '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+    "chevron-bas": '<path d="m6 9 6 6 6-6"/>',
+    "chevron-droite": '<path d="m9 18 6-6-6-6"/>',
+    "oeil": '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    "oeil-barre": '<path d="m3 3 18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.2"/><path d="M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+    "cadenas": '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    "cadenas-ouvert": '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.9-1"/>',
+    "gomme": '<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l10-10a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L11 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+    "etiquette": '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+    "regle": '<path d="M21.3 15.3 8.7 2.7a1 1 0 0 0-1.4 0L2.7 7.3a1 1 0 0 0 0 1.4l12.6 12.6a1 1 0 0 0 1.4 0l4.6-4.6a1 1 0 0 0 0-1.4z"/><path d="m7.5 10.5 2-2M10.5 13.5l2-2M13.5 16.5l2-2"/>',
+    "epingle": '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+    "camion": '<path d="M1 4h14v12H1z"/><path d="M15 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+    "boite": '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/>',
+}
 
 
-def icone_page(endpoint):
-    """Icône affichée devant le titre de chaque page, selon la rubrique."""
-    for prefixe, ico in ICONES_PAGES:
+def ic(nom, taille=None):
+    """Icône SVG en ligne : {{ ic('panier') }}. Prend la couleur du texte (currentColor)."""
+    style = f' style="width:{taille}px;height:{taille}px"' if taille else ""
+    return Markup(f'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+                  f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"{style}>{ICONES[nom]}</svg>')
+
+
+def icone_url(nom, couleur):
+    """Icône en image (data URI) pour les décorations CSS : titres de page, champs de recherche…"""
+    from urllib.parse import quote
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="{couleur}" '
+           f'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{ICONES[nom]}</svg>')
+    return "url('data:image/svg+xml," + quote(svg, safe="") + "')"
+
+
+app.jinja_env.globals["ic"] = ic
+
+# Rubrique de chaque page : icône du titre et fil d'Ariane de la barre du haut
+RUBRIQUES = (("index", "accueil", "Pilotage", "Tableau de bord"), ("rapport", "graphique", "Pilotage", "Rapports"),
+             ("lot", "seringue", "Stock", "Vaccins & lots"), ("vaccin", "seringue", "Stock", "Catalogue des vaccins"),
+             ("mouvement", "echange", "Stock", "Entrées / sorties"), ("inventaire", "inventaire", "Stock", "Inventaire"),
+             ("article", "outils", "Stock", "Articles"), ("caisse", "panier", "Commercial", "Caisse"),
+             ("commande", "recu", "Commercial", "Commandes"), ("vente", "billets", "Commercial", "Ventes"),
+             ("facture", "fichier", "Commercial", "Factures"), ("client", "utilisateurs", "Commercial", "Clients"),
+             ("message", "mail", "Communication", "Messagerie"), ("referentiel", "dossier", "Administration", "Référentiels"),
+             ("ref_", "dossier", "Administration", "Référentiels"), ("utilisateur", "bouclier", "Administration", "Utilisateurs"),
+             ("email", "mail", "Administration", "Notifications e-mail"), ("journal", "historique", "Administration", "Audit"),
+             ("donnees", "fiole", "Administration", "Données d'essai"), ("mon_compte", "utilisateur", "Mon compte", "Profil"),
+             ("mot_de_passe", "cle", "Mon compte", "Mot de passe"))
+
+
+def rubrique(endpoint):
+    for prefixe, ico, section, page in RUBRIQUES:
         if (endpoint or "").startswith(prefixe):
-            return ico
-    return "📄"
+            return {"ico": ico, "section": section, "page": page}
+    return {"ico": "fichier", "section": "", "page": ""}
+
+
+def style_page(endpoint):
+    """Variables CSS de la page : icône du titre en vert (thème clair) et vert pâle (thème sombre)."""
+    nom = rubrique(endpoint)["ico"]
+    return Markup(f"--ico-page:{icone_url(nom, '#2b7313')};--ico-page-sombre:{icone_url(nom, '#8fd66a')}")
 
 
 @app.context_processor
@@ -580,7 +674,7 @@ def inject_globals():
         nb = query("SELECT COUNT(*) AS n FROM messages WHERE destinataire_id=? AND lu=0",
                    (session["user"]["id"],), one=True)["n"]
     return {"nb_non_lus": nb, "peut_gerer": peut_gerer(), "STATUTS": STATUTS,
-            "MOTIFS_SORTIE": MOTIFS_SORTIE, "annee": date.today().year, "ico_page": icone_page(request.endpoint), "jour_fr": jour_en_lettres(date.today()), "devise": DEVISE, "TYPES_DOC": TYPES_DOC,
+            "MOTIFS_SORTIE": MOTIFS_SORTIE, "annee": date.today().year, "style_page": style_page(request.endpoint), "rubrique": rubrique(request.endpoint), "jour_fr": jour_en_lettres(date.today()), "devise": DEVISE, "TYPES_DOC": TYPES_DOC,
             "droits": {k: droit(k) for k in DROITS}}
 
 
@@ -3580,23 +3674,23 @@ def export_articles():
 
 # ---------------------------------------------------------------- Référentiels
 REFERENTIELS = {
-    "categories": {"titre": "Catégories", "ico": "🏷️", "table": "categories",
+    "categories": {"titre": "Catégories", "ico": "etiquette", "table": "categories",
                    "desc": "familles d'articles (vaccins, intrants, matériel…)",
                    "champs": [("nom", "Nom", True), ("description", "Description", False)],
                    "usage": "(SELECT COUNT(*) FROM articles WHERE categorie_id = t.id)",
                    "usage_label": "article(s)"},
-    "unites": {"titre": "Unités", "ico": "📏", "table": "unites",
+    "unites": {"titre": "Unités", "ico": "regle", "table": "unites",
                "desc": "dose, flacon, boîte…",
                "champs": [("nom", "Nom", True), ("symbole", "Symbole", False)],
                "usage": "(SELECT COUNT(*) FROM articles WHERE unite_id = t.id)",
                "usage_label": "article(s)"},
-    "emplacements": {"titre": "Emplacements", "ico": "📍", "table": "emplacements",
+    "emplacements": {"titre": "Emplacements", "ico": "epingle", "table": "emplacements",
                      "desc": "chambres froides, rayons, magasins…",
                      "champs": [("nom", "Nom", True), ("description", "Description", False)],
                      "usage": "((SELECT COUNT(*) FROM lots WHERE emplacement_id = t.id)"
                               " + (SELECT COUNT(*) FROM articles WHERE emplacement_id = t.id))",
                      "usage_label": "lot(s) ou article(s)"},
-    "fournisseurs": {"titre": "Fournisseurs", "ico": "🚚", "table": "fournisseurs",
+    "fournisseurs": {"titre": "Fournisseurs", "ico": "camion", "table": "fournisseurs",
                      "desc": "base des fournisseurs",
                      "champs": [("nom", "Nom", True), ("contact", "Contact", False),
                                 ("telephone", "Téléphone", False), ("email", "E-mail", False),
@@ -4958,55 +5052,155 @@ html[data-theme=sombre] .attente{color:#f3cf7a}
 html[data-theme=sombre] .indice.alerte{color:#ff8a87}
 html[data-theme=sombre] details.profil summary{background:var(--surface)}
 html[data-theme=sombre] .actions-bon small{color:var(--texte-2)}
+/* ------------------------------------------------ Finition professionnelle */
+.ic{width:18px;height:18px;flex:none;vertical-align:-3px;display:inline-block}
+button .ic,.btn .ic,.btn-export .ic{width:16px;height:16px;vertical-align:-3px}
+a .ic{margin-right:2px}
+body:not(.login)::before{display:none}
+body{font-size:14.5px}
+/* Menu latéral : sobre, icônes au trait, rubrique active soulignée d'or */
+.sidebar{background:#10300a;box-shadow:none;border-right:1px solid rgba(0,0,0,.25)}
+.sidebar .brand{padding:18px 18px 16px}
+.sidebar .groupe{color:#7f9c6e;font-size:10.5px;letter-spacing:1.2px;padding:18px 12px 6px}
+.sidebar .liens a{color:#c9d8c0;font-weight:500;padding:8px 12px;gap:12px}
+.sidebar .liens a .i{width:auto;display:inline-flex;color:#93ad85}
+.sidebar .liens a .ic{width:18px;height:18px}
+.sidebar .liens a:hover{background:rgba(255,255,255,.06);color:#fff}
+.sidebar .liens a:hover .i{color:#d5e8c8}
+.sidebar .liens a.actif{background:rgba(255,255,255,.1);box-shadow:none;color:#fff;font-weight:600}
+.sidebar .liens a.actif .i{color:var(--or)}
+.sidebar .liens a.actif::before{left:-10px;top:7px;bottom:7px;width:3px}
+.sidebar .pastille-nb{background:var(--or);color:#1b1300}
+/* Barre du haut : fil d'Ariane */
+.topbar{height:58px}
+.ariane{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--texte-3);min-width:0}
+.ariane .ic{width:14px;height:14px}
+.ariane b{color:var(--texte);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .jour{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--texte-3);margin-right:6px}
+.topbar .jour .ic{width:15px;height:15px}
+.icone-btn{font-size:0;color:var(--texte-2)}
+.icone-btn .ic{width:19px;height:19px}
+.icone-btn .nb{font-size:10.5px}
+button.burger{font-size:0}
+button.burger .ic{width:20px;height:20px}
+.profil .chevron .ic{width:14px;height:14px;color:var(--texte-3)}
+.profil .menu a .ic{color:var(--texte-3)}
+.profil .menu a.sortie .ic{color:var(--rouge)}
+/* Titres de page : icône de rubrique dans un pavé teinté */
+main>h1:first-of-type::before,.entete-page h1::before{content:"";background:var(--ico-page) center/22px no-repeat,var(--vert-clair);border:0;box-shadow:none;width:42px;height:42px;border-radius:11px}
+main>h1:first-of-type{font-size:24px;padding-bottom:14px}
+.entete-page h1{font-size:24px}
+main>h2,.deux-col>div:not(.panneau)>h2{font-size:16px;font-weight:650}
+main>h2::before,.deux-col>div:not(.panneau)>h2::before{display:none}
+.panneau h2{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:650}
+.panneau h2 .ic{color:var(--vert)}
+/* Tableaux : en-tête discret, lignes aérées */
+th{background:var(--surface-2);color:var(--texte-2);font-size:11.5px;font-weight:650;text-transform:uppercase;letter-spacing:.06em;padding:11px 14px;border-bottom:1px solid var(--bord)}
+td{padding:11px 14px}
+main table:not(.fact-table):not(.bon-table) tr:nth-child(even) td{background:transparent}
+.bon-table th{background:var(--vert-fonce);color:#fff;text-transform:none;letter-spacing:.3px;font-size:12.5px}
+tr:nth-child(2):last-child>td[colspan]::before{content:"";display:block;width:40px;height:40px;margin:0 auto 8px;opacity:1;
+background:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2398a592%22 stroke-width=%221.6%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M22 12h-6l-2 3h-4l-2-3H2%22/%3E%3Cpath d=%22M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z%22/%3E%3C/svg%3E') center/contain no-repeat}
+tr:nth-child(2):last-child>td[colspan]{font-style:normal}
+/* Boutons : aplats nets */
+button,.btn{background:var(--vert-fonce);box-shadow:0 1px 2px rgba(20,40,10,.18)}
+button:hover,.btn:hover{background:#1f5a0c}
+button.secondaire,.btn.secondaire,.btn-export{box-shadow:none;border-color:var(--bord-fort);color:var(--texte)}
+button.secondaire:hover,.btn.secondaire:hover,.btn-export:hover{background:var(--surface-2);color:var(--texte);border-color:var(--texte-3)}
+.btn-export .ic{color:var(--vert)}
+/* Champs de recherche avec loupe */
+.filtres input.grand,input.recherche{padding-left:36px;background:var(--champ) url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2398a592%22 stroke-width=%222%22 stroke-linecap=%22round%22%3E%3Ccircle cx=%2211%22 cy=%2211%22 r=%227%22/%3E%3Cpath d=%22m21 21-4.3-4.3%22/%3E%3C/svg%3E') 11px center/16px no-repeat}
+form.card{border-top:1px solid var(--bord)}
+/* Cartes indicateurs : sans barre latérale, icône teintée */
+.carte::before{display:none}
+.carte{border-radius:12px;padding:18px}
+.carte .ico{width:46px;height:46px;border-radius:12px;color:var(--accent)}
+.carte .ico .ic{width:22px;height:22px}
+.carte b{font-size:25px;letter-spacing:-.01em}
+.carte .fleche{font-size:0}
+.carte .fleche::after{content:"";display:block;width:16px;height:16px;background:currentColor;
+-webkit-mask:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222.2%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m9 18 6-6-6-6%22/%3E%3C/svg%3E') center/contain no-repeat;
+mask:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222.2%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m9 18 6-6-6-6%22/%3E%3C/svg%3E') center/contain no-repeat}
+.c-orange,.c-rouge{background:var(--surface)}
+.c-orange{border-color:#f1d49b}.c-rouge{border-color:#f0bcbc}
+a.carte:hover{transform:translateY(-1px)}
+.rapport-carte b{display:flex;align-items:center;gap:8px}
+.rapport-carte b .ic{color:var(--vert);width:20px;height:20px}
+.section-titre{margin:26px 0 -2px}
+@media(min-width:1001px){.entete-page~.cartes{grid-template-columns:repeat(3,1fr)}}
+/* Badges avec pastille de couleur */
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85}
+.etapes .pastille .ic{width:14px;height:14px}
+/* Connexion */
+.login-marque li span{color:#d9ecc9}
+.login-marque li span .ic{width:16px;height:16px}
+.champ-mdp button{font-size:0;display:inline-flex}
+.champ-mdp button .cacher,.champ-mdp button.visible .voir{display:none}
+.champ-mdp button.visible .cacher{display:inline}
+.login-theme .ic{width:18px;height:18px}
+/* Liens de retour et d'action */
+p>a:only-child{display:inline-flex;align-items:center;gap:6px;font-weight:600;text-decoration:none}
+p>a:only-child:hover{text-decoration:underline}
+html[data-theme=sombre] main>h1:first-of-type::before,html[data-theme=sombre] .entete-page h1::before{background:var(--ico-page-sombre) center/22px no-repeat,var(--vert-clair)}
+html[data-theme=sombre] th{background:#1b261b}
+html[data-theme=sombre] .sidebar{background:#0c1f08}
+html[data-theme=sombre] .c-orange{border-color:#5a4615}html[data-theme=sombre] .c-rouge{border-color:#5a2626}
+html[data-theme=sombre] button,html[data-theme=sombre] .btn{background:#2f7d15}
+html[data-theme=sombre] button:hover,html[data-theme=sombre] .btn:hover{background:#3a9419}
+html[data-theme=sombre] button.secondaire,html[data-theme=sombre] .btn.secondaire,html[data-theme=sombre] .btn-export{background:transparent;color:var(--texte);border-color:var(--bord-fort)}
+html[data-theme=sombre] button.danger{background:#b3261e}
+html[data-theme=sombre] .theme-btn,html[data-theme=sombre] .flash .fermer,html[data-theme=sombre] .champ-mdp button,html[data-theme=sombre] button.burger{background:transparent}
+
 @media print{:root,html[data-theme=sombre]{color-scheme:light;--surface:#fff;--surface-2:#fff;--texte:#18230f;--texte-2:#56644f;--titre:#173d0b;--bord:#dde6d6;--ligne:#ebf0e7;
 --entete:#2b7313;--g-grille:#e1e9db;--g-texte:#6b7865;--g-valeur:#173d0b}}
 </style></head>
 <body class="{% if session.user %}avec-menu {% endif %}{% block bodyclass %}{% endblock %}">
-{% macro lien(url, actif, ico, texte, nb=0) %}<a href="{{ url }}"{% if actif %} class="actif" aria-current="page"{% endif %}><span class="i" aria-hidden="true">{{ ico }}</span><span>{{ texte }}</span>{% if nb %}<span class="pastille-nb">{{ nb }}</span>{% endif %}</a>{% endmacro %}
+{% macro lien(url, actif, ico, texte, nb=0) %}<a href="{{ url }}"{% if actif %} class="actif" aria-current="page"{% endif %}><span class="i">{{ ic(ico) }}</span><span>{{ texte }}</span>{% if nb %}<span class="pastille-nb">{{ nb }}</span>{% endif %}</a>{% endmacro %}
 {% if session.user %}{% set r = session.user.role %}{% set ep = request.endpoint or '' %}
 <aside class="sidebar" id="menu" aria-label="Menu principal">
 <a class="brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename='logo.png') }}" alt="ISRA"><span><b>UPVac</b><small>Gestion des vaccins · ISRA</small></span></a>
 <nav class="liens">
 <div class="groupe">Pilotage</div>
-{{ lien(url_for('index'), ep == 'index', '🏠', 'Tableau de bord') }}
-{% if droits.rapports_voir %}{{ lien(url_for('rapports'), ep.startswith('rapport'), '📊', 'Rapports') }}{% endif %}
+{{ lien(url_for('index'), ep == 'index', 'accueil', 'Tableau de bord') }}
+{% if droits.rapports_voir %}{{ lien(url_for('rapports'), ep.startswith('rapport'), 'graphique', 'Rapports') }}{% endif %}
 <div class="groupe">Stock</div>
-{{ lien(url_for('lots'), ep.startswith('lot') or ep.startswith('vaccin'), '💉', 'Vaccins & lots') }}
-{% if droits.mouvements_voir %}{{ lien(url_for('mouvements'), ep.startswith('mouvement'), '🔁', 'Entrées / sorties') }}{% endif %}
-{% if droits.inventaire_voir %}{{ lien(url_for('inventaires'), ep.startswith('inventaire'), '📋', 'Inventaire') }}{% endif %}
-{% if droits.articles_voir %}{{ lien(url_for('articles'), ep.startswith('article'), '🧰', 'Articles') }}{% endif %}
+{{ lien(url_for('lots'), ep.startswith('lot') or ep.startswith('vaccin'), 'seringue', 'Vaccins & lots') }}
+{% if droits.mouvements_voir %}{{ lien(url_for('mouvements'), ep.startswith('mouvement'), 'echange', 'Entrées / sorties') }}{% endif %}
+{% if droits.inventaire_voir %}{{ lien(url_for('inventaires'), ep.startswith('inventaire'), 'inventaire', 'Inventaire') }}{% endif %}
+{% if droits.articles_voir %}{{ lien(url_for('articles'), ep.startswith('article'), 'outils', 'Articles') }}{% endif %}
 {% if droits.clients_voir or droits.commandes_voir or droits.ventes_voir or droits.ventes_saisir or droits.factures_voir %}<div class="groupe">Commercial</div>{% endif %}
-{% if droits.ventes_saisir %}{{ lien(url_for('caisse'), ep.startswith('caisse'), '🛒', 'Caisse') }}{% endif %}
-{% if droits.commandes_voir %}{{ lien(url_for('commandes'), ep.startswith('commande'), '🧾', 'Commandes') }}{% endif %}
-{% if droits.ventes_voir %}{{ lien(url_for('ventes'), ep.startswith('vente'), '💰', 'Ventes') }}{% endif %}
-{% if droits.factures_voir %}{{ lien(url_for('factures'), ep.startswith('facture'), '📄', 'Factures') }}{% endif %}
-{% if droits.clients_voir %}{{ lien(url_for('clients'), ep.startswith('client'), '👥', 'Clients') }}{% endif %}
+{% if droits.ventes_saisir %}{{ lien(url_for('caisse'), ep.startswith('caisse'), 'panier', 'Caisse') }}{% endif %}
+{% if droits.commandes_voir %}{{ lien(url_for('commandes'), ep.startswith('commande'), 'recu', 'Commandes') }}{% endif %}
+{% if droits.ventes_voir %}{{ lien(url_for('ventes'), ep.startswith('vente'), 'billets', 'Ventes') }}{% endif %}
+{% if droits.factures_voir %}{{ lien(url_for('factures'), ep.startswith('facture'), 'fichier', 'Factures') }}{% endif %}
+{% if droits.clients_voir %}{{ lien(url_for('clients'), ep.startswith('client'), 'utilisateurs', 'Clients') }}{% endif %}
 <div class="groupe">Communication</div>
-{{ lien(url_for('messages'), ep.startswith('message'), '✉️', 'Messagerie', nb_non_lus) }}
+{{ lien(url_for('messages'), ep.startswith('message'), 'mail', 'Messagerie', nb_non_lus) }}
 {% if droits.referentiels_voir or droits.utilisateurs or droits.audit or droits.reinitialiser %}<div class="groupe">Administration</div>{% endif %}
-{% if droits.referentiels_voir %}{{ lien(url_for('referentiels'), ep.startswith('referentiel') or ep.startswith('ref_'), '🗂️', 'Référentiels') }}{% endif %}
-{% if droits.utilisateurs %}{{ lien(url_for('utilisateurs'), ep.startswith('utilisateur') or ep.startswith('email_'), '🔐', 'Utilisateurs') }}{% endif %}
-{% if droits.audit %}{{ lien(url_for('journal'), ep == 'journal', '🕵️', 'Audit') }}{% endif %}
-{% if droits.reinitialiser %}{{ lien(url_for('donnees_essai'), ep.startswith('donnees'), '🧪', "Données d'essai") }}{% endif %}
+{% if droits.referentiels_voir %}{{ lien(url_for('referentiels'), ep.startswith('referentiel') or ep.startswith('ref_'), 'dossier', 'Référentiels') }}{% endif %}
+{% if droits.utilisateurs %}{{ lien(url_for('utilisateurs'), ep.startswith('utilisateur') or ep.startswith('email_'), 'bouclier', 'Utilisateurs') }}{% endif %}
+{% if droits.audit %}{{ lien(url_for('journal'), ep == 'journal', 'historique', 'Audit') }}{% endif %}
+{% if droits.reinitialiser %}{{ lien(url_for('donnees_essai'), ep.startswith('donnees'), 'fiole', "Données d'essai") }}{% endif %}
 </nav>
 <div class="bas-menu">© {{ annee }} UPVac · ISRA</div>
 </aside>
 <div class="voile" onclick="document.body.classList.remove('menu-ouvert')"></div>
 <header class="topbar">
 <button type="button" class="burger" aria-label="Ouvrir le menu" aria-controls="menu" aria-expanded="false"
-onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('aria-expanded',o)">☰</button>
-<div class="jour">{{ jour_fr }}</div>
+onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('aria-expanded',o)">{{ ic('menu') }}</button>
+<nav class="ariane" aria-label="Fil d'Ariane">{% if rubrique.section %}<span>{{ rubrique.section }}</span>{{ ic('chevron-droite') }}{% endif %}<b>{{ rubrique.page or 'UPVac' }}</b></nav>
 <div class="outils">
-<button type="button" class="icone-btn theme-btn" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">🌙</span><span class="sombre-ico">☀️</span></button>
-<a class="icone-btn" href="{{ url_for('messages') }}" title="Messagerie" aria-label="Messagerie{% if nb_non_lus %}, {{ nb_non_lus }} non lu(s){% endif %}">✉️{% if nb_non_lus %}<span class="nb">{{ nb_non_lus }}</span>{% endif %}</a>
-<details class="profil"><summary><span class="avatar">{{ session.user.username[:1] }}</span><span class="qui"><b>{{ session.user.username }}</b><small>{{ r|role_lib }}</small></span><span class="chevron">▼</span></summary>
+<span class="jour">{{ ic('calendrier') }} {{ jour_fr }}</span>
+<button type="button" class="icone-btn theme-btn" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">{{ ic('lune') }}</span><span class="sombre-ico">{{ ic('soleil') }}</span></button>
+<a class="icone-btn" href="{{ url_for('messages') }}" title="Messagerie" aria-label="Messagerie{% if nb_non_lus %}, {{ nb_non_lus }} non lu(s){% endif %}">{{ ic('mail') }}{% if nb_non_lus %}<span class="nb">{{ nb_non_lus }}</span>{% endif %}</a>
+<details class="profil"><summary><span class="avatar">{{ session.user.username[:1] }}</span><span class="qui"><b>{{ session.user.username }}</b><small>{{ r|role_lib }}</small></span><span class="chevron">{{ ic('chevron-bas') }}</span></summary>
 <div class="menu">
-<a href="{{ url_for('mon_compte') }}">👤 Mon compte</a>
-<a href="{{ url_for('mot_de_passe') }}">🔑 Mot de passe</a>
-<hr><a class="sortie" href="{{ url_for('logout') }}">⏻ Déconnexion</a>
+<a href="{{ url_for('mon_compte') }}">{{ ic('utilisateur') }} Mon compte</a>
+<a href="{{ url_for('mot_de_passe') }}">{{ ic('cle') }} Mot de passe</a>
+<hr><a class="sortie" href="{{ url_for('logout') }}">{{ ic('sortie') }} Déconnexion</a>
 </div></details>
-</div></header>{% else %}<button type="button" class="icone-btn theme-btn login-theme" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">🌙</span><span class="sombre-ico">☀️</span></button>{% endif %}
-<main style="--ico-page:'{{ ico_page }}'">{% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes no-print" role="status">{% for cat, m in msgs %}
+</div></header>{% else %}<button type="button" class="icone-btn theme-btn login-theme" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">{{ ic('lune') }}</span><span class="sombre-ico">{{ ic('soleil') }}</span></button>{% endif %}
+<main style="{{ style_page }}">{% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes no-print" role="status">{% for cat, m in msgs %}
 <div class="flash {{ cat }}"><span>{{ m }}</span><button type="button" class="fermer" aria-label="Fermer" onclick="this.parentNode.remove()">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
 {% block content %}{% endblock %}</main>
 <footer class="pied">UPVac · ISRA — Gestion de stock des vaccins · © {{ annee }}</footer>
@@ -5087,9 +5281,9 @@ LOGIN = """{% extends 'base.html' %}{% block bodyclass %}login{% endblock %}{% b
 <div><img src="{{ url_for('static', filename='logo.png') }}" alt="Logo ISRA - UPVac">
 <h2>GESVac</h2><p>Plateforme de gestion des vaccins de l'UPVac · ISRA</p></div>
 <ul>
-<li><span>💉</span> Stock des lots et alertes de péremption</li>
-<li><span>🧾</span> Commandes, ventes et facturation</li>
-<li><span>📊</span> Rapports mensuels et annuels</li>
+<li><span>{{ ic('seringue') }}</span> Stock des lots et alertes de péremption</li>
+<li><span>{{ ic('recu') }}</span> Commandes, ventes et facturation</li>
+<li><span>{{ ic('graphique') }}</span> Rapports mensuels et annuels</li>
 </ul>
 </div>
 <div class="login-card">
@@ -5098,7 +5292,7 @@ LOGIN = """{% extends 'base.html' %}{% block bodyclass %}login{% endblock %}{% b
 <form method="post">
 <label>Utilisateur<input name="username" required autofocus autocomplete="username" placeholder="Votre identifiant"></label>
 <label>Mot de passe<span class="champ-mdp"><input name="password" id="mdp" type="password" required autocomplete="current-password" placeholder="••••••••">
-<button type="button" aria-label="Afficher le mot de passe" title="Afficher / masquer" onclick="var i=document.getElementById('mdp');var v=i.type==='password';i.type=v?'text':'password';this.textContent=v?'🙈':'👁';this.setAttribute('aria-label',v?'Masquer le mot de passe':'Afficher le mot de passe')">👁</button></span></label>
+<button type="button" aria-label="Afficher le mot de passe" title="Afficher / masquer" onclick="var i=document.getElementById('mdp');var v=i.type==='password';i.type=v?'text':'password';this.classList.toggle('visible',v);this.setAttribute('aria-label',v?'Masquer le mot de passe':'Afficher le mot de passe')"><span class="voir">{{ ic('oeil') }}</span><span class="cacher">{{ ic('oeil-barre') }}</span></button></span></label>
 <button>Se connecter</button></form>
 <p class="aide">Mot de passe oublié ? Contactez l'administrateur de la plateforme.</p>
 </div></div></div>
@@ -5108,33 +5302,33 @@ INDEX = """{% extends 'base.html' %}{% block content %}
 <div class="entete-page">
 <div><h1>Tableau de bord</h1><p>Bonjour <b>{{ session.user.username }}</b>, voici la situation du stock et de l'activité.</p></div>
 <div class="actions no-print">
-{% if droits.ventes_saisir %}<a class="btn" href="{{ url_for('caisse') }}">🛒 Nouvelle vente</a>{% endif %}
-{% if droits.commandes_saisir %}<a class="btn secondaire" href="{{ url_for('commande_nouvelle') }}">🧾 Nouvelle commande</a>{% endif %}
-{% if peut_gerer %}<a class="btn secondaire" href="{{ url_for('lots') }}">📦 Réception de lot</a>{% endif %}
-{% if droits.rapports_voir %}<a class="btn secondaire" href="{{ url_for('rapports') }}">📊 Rapports</a>{% endif %}
+{% if droits.ventes_saisir %}<a class="btn" href="{{ url_for('caisse') }}">{{ ic('panier') }} Nouvelle vente</a>{% endif %}
+{% if droits.commandes_saisir %}<a class="btn secondaire" href="{{ url_for('commande_nouvelle') }}">{{ ic('recu') }} Nouvelle commande</a>{% endif %}
+{% if peut_gerer %}<a class="btn secondaire" href="{{ url_for('lots') }}">{{ ic('colis') }} Réception de lot</a>{% endif %}
+{% if droits.rapports_voir %}<a class="btn secondaire" href="{{ url_for('rapports') }}">{{ ic('graphique') }} Rapports</a>{% endif %}
 </div></div>
 
 <div class="section-titre">Stock</div>
 <div class="cartes">
-<a class="carte c-vert" href="{{ url_for('lots', stock=1) }}"><span class="ico">💉</span><div><b>{{ stats.doses|nombre }}</b><small>Doses vendables en stock</small></div><span class="fleche">›</span></a>
-<a class="carte c-bleu" href="{{ url_for('lots', stock=1) }}"><span class="ico">📦</span><div><b>{{ stats.lots }}</b><small>Lots en stock · {{ stats.nb_vaccins }} vaccin(s) au catalogue</small></div><span class="fleche">›</span></a>
-<a class="carte {{ 'c-rouge' if stats.perimes else 'c-vert' }}" href="{{ url_for('lots', delai='perimes', stock=1) }}"><span class="ico">⛔</span><div><b>{{ stats.perimes }}</b><small>Lot(s) périmé(s) avec stock</small></div><span class="fleche">›</span></a>
-<a class="carte {{ 'c-orange' if stats.proches else 'c-vert' }}" href="{{ url_for('lots', delai='30', stock=1) }}"><span class="ico">⏳</span><div><b>{{ stats.proches }}</b><small>Lot(s) expirant sous 30 jours</small></div><span class="fleche">›</span></a>
-<a class="carte {{ 'c-orange' if stats.bas else 'c-vert' }}" href="#stock-vaccins"><span class="ico">📉</span><div><b>{{ stats.bas }}</b><small>Vaccin(s) sous le seuil minimal</small></div><span class="fleche">›</span></a>
-{% if droits.articles_voir %}<a class="carte {{ 'c-orange' if stats.art_bas else 'c-vert' }}" href="{{ url_for('articles', etat='bas') }}"><span class="ico">🧰</span><div><b>{{ stats.art_bas }}</b><small>Article(s) sous le seuil minimal</small></div><span class="fleche">›</span></a>{% endif %}
+<a class="carte c-vert" href="{{ url_for('lots', stock=1) }}"><span class="ico">{{ ic('seringue') }}</span><div><b>{{ stats.doses|nombre }}</b><small>Doses vendables en stock</small></div><span class="fleche">›</span></a>
+<a class="carte c-bleu" href="{{ url_for('lots', stock=1) }}"><span class="ico">{{ ic('colis') }}</span><div><b>{{ stats.lots }}</b><small>Lots en stock · {{ stats.nb_vaccins }} vaccin(s) au catalogue</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-rouge' if stats.perimes else 'c-vert' }}" href="{{ url_for('lots', delai='perimes', stock=1) }}"><span class="ico">{{ ic('interdit') }}</span><div><b>{{ stats.perimes }}</b><small>Lot(s) périmé(s) avec stock</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-orange' if stats.proches else 'c-vert' }}" href="{{ url_for('lots', delai='30', stock=1) }}"><span class="ico">{{ ic('sablier') }}</span><div><b>{{ stats.proches }}</b><small>Lot(s) expirant sous 30 jours</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-orange' if stats.bas else 'c-vert' }}" href="#stock-vaccins"><span class="ico">{{ ic('baisse') }}</span><div><b>{{ stats.bas }}</b><small>Vaccin(s) sous le seuil minimal</small></div><span class="fleche">›</span></a>
+{% if droits.articles_voir %}<a class="carte {{ 'c-orange' if stats.art_bas else 'c-vert' }}" href="{{ url_for('articles', etat='bas') }}"><span class="ico">{{ ic('outils') }}</span><div><b>{{ stats.art_bas }}</b><small>Article(s) sous le seuil minimal</small></div><span class="fleche">›</span></a>{% endif %}
 </div>
 
 <div class="section-titre">Activité</div>
 <div class="cartes">
-<a class="carte {{ 'c-rouge' if stats.alertes else 'c-vert' }}" href="#alertes"><span class="ico">🔔</span><div><b>{{ stats.alertes }}</b><small>Alerte(s) en cours</small></div><span class="fleche">›</span></a>
-{% if droits.commandes_voir %}<a class="carte {{ 'c-orange' if stats.commandes else 'c-bleu' }}" href="{{ url_for('commandes', a_traiter=1) }}"><span class="ico">🧾</span><div><b>{{ stats.commandes }}</b><small>{{ stats.commandes_libelle }}</small></div><span class="fleche">›</span></a>{% endif %}
-{% if droits.ventes_voir %}<a class="carte c-bleu" href="{{ url_for('ventes', du=stats.debut_mois) }}"><span class="ico">🛒</span><div><b>{{ stats.ventes }}</b><small>Vente(s) ce mois · {{ stats.montant }} {{ devise }}</small></div><span class="fleche">›</span></a>
-<a class="carte {{ 'c-orange' if stats.nb_retard else 'c-bleu' }}" href="{{ url_for('ventes', mode='terme', statut='impayees') }}"><span class="ico">💳</span><div><b>{{ stats.a_encaisser }}</b><small>{{ devise }} à encaisser (ventes à terme){% if stats.nb_retard %} · {{ stats.nb_retard }} en retard{% endif %}</small></div><span class="fleche">›</span></a>{% endif %}
-<a class="carte {{ 'c-orange' if stats.non_lus else 'c-bleu' }}" href="{{ url_for('messages') }}"><span class="ico">✉️</span><div><b>{{ stats.non_lus }}</b><small>Message(s) non lu(s)</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-rouge' if stats.alertes else 'c-vert' }}" href="#alertes"><span class="ico">{{ ic('cloche') }}</span><div><b>{{ stats.alertes }}</b><small>Alerte(s) en cours</small></div><span class="fleche">›</span></a>
+{% if droits.commandes_voir %}<a class="carte {{ 'c-orange' if stats.commandes else 'c-bleu' }}" href="{{ url_for('commandes', a_traiter=1) }}"><span class="ico">{{ ic('recu') }}</span><div><b>{{ stats.commandes }}</b><small>{{ stats.commandes_libelle }}</small></div><span class="fleche">›</span></a>{% endif %}
+{% if droits.ventes_voir %}<a class="carte c-bleu" href="{{ url_for('ventes', du=stats.debut_mois) }}"><span class="ico">{{ ic('panier') }}</span><div><b>{{ stats.ventes }}</b><small>Vente(s) ce mois · {{ stats.montant }} {{ devise }}</small></div><span class="fleche">›</span></a>
+<a class="carte {{ 'c-orange' if stats.nb_retard else 'c-bleu' }}" href="{{ url_for('ventes', mode='terme', statut='impayees') }}"><span class="ico">{{ ic('carte') }}</span><div><b>{{ stats.a_encaisser }}</b><small>{{ devise }} à encaisser (ventes à terme){% if stats.nb_retard %} · {{ stats.nb_retard }} en retard{% endif %}</small></div><span class="fleche">›</span></a>{% endif %}
+<a class="carte {{ 'c-orange' if stats.non_lus else 'c-bleu' }}" href="{{ url_for('messages') }}"><span class="ico">{{ ic('mail') }}</span><div><b>{{ stats.non_lus }}</b><small>Message(s) non lu(s)</small></div><span class="fleche">›</span></a>
 </div>
 
 <div class="panneau" id="alertes" style="scroll-margin-top:80px">
-<h2>🔔 Alertes</h2>
+<h2>{{ ic('cloche') }} Alertes</h2>
 {% set nb_danger = alertes|selectattr(0, 'equalto', 'danger')|list|length %}
 {% if alertes %}<div class="resume-alertes">
 {% if nb_danger %}<span class="badge b-périmé">{{ nb_danger }} critique(s)</span>{% endif %}
@@ -5146,11 +5340,11 @@ INDEX = """{% extends 'base.html' %}{% block content %}
 </div></div>
 
 <div class="deux-col egal" style="margin-top:22px">
-<div class="panneau"><h2>📈 Évolution du stock</h2><p class="legende-graph">Doses en stock en fin de mois, 6 derniers mois</p>
+<div class="panneau"><h2>{{ ic('hausse') }} Évolution du stock</h2><p class="legende-graph">Doses en stock en fin de mois, 6 derniers mois</p>
 <div class="resume-graph"><span><b>{{ resume_graph.stock_fin }}</b>doses fin de mois</span>
 {% if resume_graph.stock_var %}<span><b style="color:{{ 'var(--vert)' if resume_graph.stock_var > 0 else 'var(--rouge)' }}">{{ '▲' if resume_graph.stock_var > 0 else '▼' }} {{ resume_graph.stock_var|abs|nombre }}</b>sur le dernier mois</span>{% endif %}</div>
 {{ graphique_stock }}</div>
-{% if droits.ventes_voir %}<div class="panneau"><h2>📊 Doses vendues par mois</h2><p class="legende-graph">Quantités vendues, 6 derniers mois</p>
+{% if droits.ventes_voir %}<div class="panneau"><h2>{{ ic('graphique') }} Doses vendues par mois</h2><p class="legende-graph">Quantités vendues, 6 derniers mois</p>
 <div class="resume-graph"><span><b>{{ resume_graph.ventes_total }}</b>doses sur 6 mois</span><span><b>{{ resume_graph.ventes_moy }}</b>en moyenne / mois</span></div>
 {{ graphique_ventes }}</div>{% endif %}
 </div>
@@ -5186,7 +5380,7 @@ VACCINS = """{% extends 'base.html' %}{% block content %}
 <label>Seuil minimal<input name="seuil_min" type="number" min="0" value="0"></label>
 <label>Prix unitaire ({{ devise }})<input name="prix_unitaire" type="text" inputmode="decimal" value="0"></label>
 <button>Ajouter</button></form>{% endif %}
-<h2>Liste</h2><input class="recherche" data-filtre="t-vaccins" placeholder="🔍 Rechercher un vaccin (nom, espèce, fabricant)…">
+<h2>Liste</h2><input class="recherche" data-filtre="t-vaccins" placeholder="Rechercher un vaccin (nom, espèce, fabricant)…">
 <p class="compte">{% if archives %}<a href="{{ url_for('vaccins') }}">Masquer les vaccins archivés</a>{% else %}<a href="{{ url_for('vaccins', archives=1) }}">Afficher les vaccins archivés</a>{% endif %}</p>
 <table id="t-vaccins"><tr><th>Nom</th><th>Type</th><th>Espèce</th><th>Fabricant</th><th>Doses/flacon</th>
 <th>Prix unitaire</th><th>Conservation</th><th>Seuil</th><th>Stock</th><th>Vendable</th><th>Actions</th></tr>
@@ -5207,7 +5401,7 @@ onsubmit='return confirm({{ ("Supprimer définitivement « " ~ v.nom ~ " » ?" ~
 
 LOTS = """{% extends 'base.html' %}{% block content %}
 <h1>Vaccin</h1>
-{% if droits.vaccins_voir %}<p><a href="{{ url_for('vaccins') }}">📚 Catalogue des vaccins et prix unitaires</a></p>{% endif %}
+{% if droits.vaccins_voir %}<p><a href="{{ url_for('vaccins') }}">{{ ic('livre') }} Catalogue des vaccins et prix unitaires</a></p>{% endif %}
 {% if peut_gerer %}<form class="card" method="post" enctype="multipart/form-data">
 <label>Nom du vaccin<input name="vaccin_nom" id="lot-vaccin" list="liste-vaccins" required maxlength="120" autocomplete="off" placeholder="Taper ou choisir le vaccin"></label>
 <datalist id="liste-vaccins">{% for v in vaccins %}<option value="{{ v.nom }}">{% endfor %}</datalist>
@@ -5239,7 +5433,7 @@ LOTS = """{% extends 'base.html' %}{% block content %}
 </script>{% endif %}
 <h2>Stock par lot (tri : péremption la plus proche)</h2>
 <form class="filtres" method="get" action="{{ url_for('lots') }}">
-<input class="grand" name="q" value="{{ flt.q }}" placeholder="🔍 Lot, vaccin, emplacement, provenance…">
+<input class="grand" name="q" value="{{ flt.q }}" placeholder="Lot, vaccin, emplacement, provenance…">
 <select name="vaccin_id"><option value="">Tous les vaccins</option>{% for v in vaccins_tous %}<option value="{{ v.id }}" {% if flt.vaccin_id == v.id|string %}selected{% endif %}>{{ v.nom }}</option>{% endfor %}</select>
 <select name="statut"><option value="">Tous les statuts</option>{% for s in STATUTS_LOT %}<option {% if flt.statut == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
 <select name="delai"><option value="">Toutes péremptions</option>
@@ -5252,7 +5446,7 @@ LOTS = """{% extends 'base.html' %}{% block content %}
 <label class="case"><input type="checkbox" name="stock" value="1" {% if flt.stock == '1' %}checked{% endif %}> En stock seulement</label>
 <button>Filtrer</button><a class="lien-reset" href="{{ url_for('lots') }}">Réinitialiser</a></form>
 <p class="compte">{{ lots|length }} lot(s){% if fq %} · filtres actifs{% endif %}
-&nbsp;<a class="btn-export" href="{{ url_for('export_stock', **fq) }}">📥 Exporter en Excel</a></p>
+&nbsp;<a class="btn-export" href="{{ url_for('export_stock', **fq) }}">{{ ic('telecharger') }} Exporter en Excel</a></p>
 <table><tr><th>Nom du vaccin</th><th>N° lot</th><th>Quantité reçue</th><th>Disponible</th><th>Provenance</th><th>Fabrication</th><th>Péremption</th><th>Jours</th>
 <th>Emplacement</th><th>Témoins</th><th>Détruites</th><th>Statut</th><th></th></tr>
 {% for l in lots %}<tr><td>{{ l.vaccin_nom }}</td><td>{{ l.numero_lot }}</td><td>{{ l.recu }}</td><td><b>{{ l.stock }}</b></td>
@@ -5286,7 +5480,7 @@ onsubmit="return confirm('Enregistrer cette destruction ? Les doses seront retir
 <button class="danger">Enregistrer la destruction</button></form>{% endif %}
 {% if droits.supprimer %}{% if clients|length == 0 %}
 <form method="post" action="{{ url_for('lot_supprimer', lot_id=lot.id) }}" class="en-ligne"
-onsubmit='return confirm({{ ("Supprimer définitivement le lot " ~ lot.numero_lot ~ " et ses " ~ mouvements|length ~ " mouvement(s) ? Action irréversible.")|tojson }})'><button class="danger">🗑️ Supprimer ce lot</button></form>
+onsubmit='return confirm({{ ("Supprimer définitivement le lot " ~ lot.numero_lot ~ " et ses " ~ mouvements|length ~ " mouvement(s) ? Action irréversible.")|tojson }})'><button class="danger">{{ ic('poubelle') }} Supprimer ce lot</button></form>
 {% else %}<p><small>Ce lot a déjà été vendu : il ne peut pas être supprimé (changez son statut si nécessaire).</small></p>{% endif %}{% endif %}
 {% if droits.pj_fournisseur_voir %}{% from 'pieces.html' import bloc_pieces %}
 <h2>Documents (fiche de fabrication, bon de livraison)</h2>
@@ -5331,7 +5525,7 @@ La vente au client concerné utilise sa réservation. Seul le CSA peut réserver
 {% else %}<tr><td colspan="8">Aucune réservation en cours.</td></tr>{% endfor %}</table>
 <h2>Mouvements</h2>
 <form class="filtres" method="get" action="{{ url_for('mouvements') }}">
-<input class="grand" name="q" value="{{ flt.q }}" placeholder="🔍 Vaccin, lot, motif, utilisateur…">
+<input class="grand" name="q" value="{{ flt.q }}" placeholder="Vaccin, lot, motif, utilisateur…">
 <select name="type"><option value="">Entrées et sorties</option>
 <option value="ENTREE" {% if flt.type == 'ENTREE' %}selected{% endif %}>Entrées</option>
 <option value="SORTIE" {% if flt.type == 'SORTIE' %}selected{% endif %}>Sorties</option></select>
@@ -5343,7 +5537,7 @@ La vente au client concerné utilise sa réservation. Seul le CSA peut réserver
 <label>Au<input type="date" name="au" value="{{ flt.au }}"></label>
 <button>Filtrer</button><a class="lien-reset" href="{{ url_for('mouvements') }}">Réinitialiser</a></form>
 <p class="compte">{{ total }} mouvement(s){% if total > 200 %} · les 200 plus récents sont affichés (l'export contient tout){% endif %}{% if fq %} · filtres actifs{% endif %}
-&nbsp;<a class="btn-export" href="{{ url_for('export_mouvements', **fq) }}">📥 Exporter en Excel</a></p>
+&nbsp;<a class="btn-export" href="{{ url_for('export_mouvements', **fq) }}">{{ ic('telecharger') }} Exporter en Excel</a></p>
 <table><tr><th>Date</th><th>Vaccin</th><th>Lot</th><th>Type</th><th>Qté</th><th>Motif</th><th>Utilisateur</th></tr>
 {% for m in mouvements %}<tr><td>{{ m.date }}</td><td>{{ m.vaccin_nom }}</td><td>{{ m.numero_lot }}</td>
 <td>{{ m.type|type_mvt(m.nature) }}</td><td>{{ m.quantite }}</td><td>{{ m.motif }}</td><td>{{ m.username }}</td></tr>
@@ -5360,7 +5554,7 @@ CLIENTS = """{% extends 'base.html' %}{% block content %}
 <label>E-mail<input name="email" type="email" maxlength="120"></label>
 <label>Adresse<input name="adresse" maxlength="200"></label>
 <button>Ajouter</button></form>{% endif %}
-<h2>Liste</h2><input class="recherche" data-filtre="t-clients" placeholder="🔍 Rechercher un client…">
+<h2>Liste</h2><input class="recherche" data-filtre="t-clients" placeholder="Rechercher un client…">
 <table id="t-clients"><tr><th>Nom</th><th>Profil</th><th>Type</th><th>Téléphone</th><th>Commandes</th><th>Ventes</th>{% if droits.supprimer %}<th>Actions</th>{% endif %}</tr>
 {% for c in clients %}<tr><td><a href="{{ url_for('client_fiche', cid=c.id) }}">{{ c.nom }}</a></td><td>{{ c.nature or '' }}</td><td>{{ c.type or '' }}</td><td>{{ c.telephone or '' }}</td><td>{{ c.nb_commandes }}</td><td>{{ c.nb_ventes }}</td>
 {% if droits.supprimer %}<td>{% if c.nb_ventes == 0 and c.nb_commandes == 0 %}
@@ -5371,7 +5565,7 @@ onsubmit='return confirm({{ ("Supprimer définitivement le client « " ~ c.nom ~
 
 CLIENT_FICHE = """{% extends 'base.html' %}{% block content %}
 <h1>{{ c.nom }}</h1>
-<p><a href="{{ url_for('clients') }}">← Clients</a></p>
+<p><a href="{{ url_for('clients') }}">{{ ic('gauche') }} Clients</a></p>
 {% if droits.clients_gerer %}<form class="card" method="post">
 <label>Nom<input name="nom" required maxlength="120" value="{{ c.nom }}"></label>
 <label>Profil<select name="nature" required><option value="">—</option>{% for x in ('entreprise', 'particulier') %}<option {% if c.nature == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
@@ -5389,14 +5583,14 @@ CLIENT_FICHE = """{% extends 'base.html' %}{% block content %}
 {% endblock %}"""
 
 VENTES = """{% extends 'base.html' %}{% block content %}
-<h1>Ventes</h1>{% if droits.ventes_saisir %}<p><a href="{{ url_for('caisse') }}"><button>🛒 Nouvelle vente (caisse)</button></a></p>{% endif %}
+<h1>Ventes</h1>{% if droits.ventes_saisir %}<p><a href="{{ url_for('caisse') }}"><button>{{ ic('panier') }} Nouvelle vente (caisse)</button></a></p>{% endif %}
 <div class="onglets">
 <a href="{{ url_for('ventes') }}" class="{{ 'actif' if not flt.mode and not statut }}">Toutes</a>
 <a href="{{ url_for('ventes', mode='comptant') }}" class="{{ 'actif' if flt.mode == 'comptant' }}">Vente au comptant</a>
 <a href="{{ url_for('ventes', mode='terme') }}" class="{{ 'actif' if flt.mode == 'terme' and not statut }}">Vente à terme</a>
 <a href="{{ url_for('ventes', mode='terme', statut='impayees') }}" class="{{ 'actif' if statut == 'impayees' }}">À encaisser</a></div>
 <form class="filtres" method="get" action="{{ url_for('ventes') }}">
-<input class="grand" name="q" value="{{ flt.q }}" placeholder="🔍 Client, vendeur ou n° de vente…">
+<input class="grand" name="q" value="{{ flt.q }}" placeholder="Client, vendeur ou n° de vente…">
 <select name="mode"><option value="">Tous les modes</option>{% for k, lib in MODES_VENTE.items() %}<option value="{{ k }}" {% if flt.mode == k %}selected{% endif %}>{{ lib }}</option>{% endfor %}</select>
 <select name="vaccin_id"><option value="">Tous les vaccins</option>{% for v in vaccins %}<option value="{{ v.id }}" {% if flt.vaccin_id == v.id|string %}selected{% endif %}>{{ v.nom }}</option>{% endfor %}</select>
 <select name="vendeur_id"><option value="">Tous les vendeurs</option>{% for u in vendeurs %}<option value="{{ u.id }}" {% if flt.vendeur_id == u.id|string %}selected{% endif %}>{{ u.username }}</option>{% endfor %}</select>
@@ -5404,18 +5598,18 @@ VENTES = """{% extends 'base.html' %}{% block content %}
 <label>Au<input type="date" name="au" value="{{ flt.au }}"></label>
 <button>Filtrer</button><a class="lien-reset" href="{{ url_for('ventes') }}">Réinitialiser</a></form>
 <p class="compte">{{ ventes|length }} vente(s) · {{ qte_total }} dose(s) · montant {{ '%.0f'|format(montant_total) }}{% if reste_total %} · reste à encaisser {{ '%.0f'|format(reste_total) }}{% endif %}{% if fq or statut %} · filtres actifs{% endif %}
-&nbsp;<a class="btn-export" href="{{ url_for('export_ventes', **fq) }}">📥 Exporter en Excel</a></p>
+&nbsp;<a class="btn-export" href="{{ url_for('export_ventes', **fq) }}">{{ ic('telecharger') }} Exporter en Excel</a></p>
 <table><tr><th>N°</th><th>Date</th><th>Client</th><th>Mode</th><th>Quantité</th><th>Total</th><th>Paiement</th><th>Vendeur</th><th>Documents</th></tr>
 {% for v in ventes %}<tr><td><a href="{{ url_for('vente_detail', vente_id=v.id) }}">{{ '%07d'|format(v.id) }}</a></td><td>{{ v.date|replace('T', ' ') }}</td><td>{{ v.client }}</td>
 <td>{{ MODES_VENTE[v.mode] }}{% if v.commande_id %}<br><a href="{{ url_for('commande_detail', cmd_id=v.commande_id) }}"><small>{{ v.commande_numero }}</small></a>{% endif %}</td>
 <td>{{ v.qte }}</td><td>{{ '%.0f'|format(v.total) }}</td>
 <td>{% if v.etat %}{% set cl = {'payée':'conforme','soldée':'conforme','partielle':'quarantaine','à régler':'quarantaine','en retard':'périmé'}[v.etat] %}<span class="badge b-{{ cl }}">{{ v.etat }}</span>{% if v.solde %}<br><small>reste {{ '%.0f'|format(v.solde) }}{% if v.echeance %} · éch. {{ v.echeance|date_fr }}{% endif %}</small>{% endif %}{% endif %}</td>
 <td>{{ v.username }}</td>
-<td><a href="{{ url_for('vente_facture', vente_id=v.id) }}">🧾 Facture</a> · <a href="{{ url_for('vente_bon', vente_id=v.id) }}">🖨️ Bon</a></td></tr>
+<td><a href="{{ url_for('vente_facture', vente_id=v.id) }}">{{ ic('recu') }} Facture</a> · <a href="{{ url_for('vente_bon', vente_id=v.id) }}">{{ ic('imprimante') }} Bon</a></td></tr>
 {% else %}<tr><td colspan="9">Aucune vente ne correspond à la recherche.</td></tr>{% endfor %}</table>{% endblock %}"""
 
 CAISSE = r"""{% extends 'base.html' %}{% block content %}
-<h1>🛒 Caisse</h1>
+<h1>Caisse</h1>
 <datalist id="liste-vaccins">{% for v in catalogue %}<option value="{{ v.nom }}">{% endfor %}</datalist>
 <datalist id="liste-clients">{% for c in clients %}<option value="{{ c.nom }}">{% endfor %}</datalist>
 <div class="onglets">
@@ -5428,7 +5622,7 @@ CAISSE = r"""{% extends 'base.html' %}{% block content %}
 <td><input name="ligne_quantite" type="number" min="1" class="l-qte" placeholder="Quantité" value="{{ l.quantite|default('') }}"></td>
 <td><input name="ligne_prix" type="text" inputmode="decimal" class="l-prix" placeholder="Auto" value="{{ l.prix|default('') }}"></td>
 <td class="num l-montant">0</td>
-<td><button type="button" class="petit danger l-suppr" title="Retirer la ligne">✕</button></td></tr>{% endmacro %}
+<td><button type="button" class="petit danger l-suppr" title="Retirer la ligne">{{ ic('croix') }}</button></td></tr>{% endmacro %}
 <form method="post" class="bloc-cmd" id="principal">
 <input type="hidden" name="mode" value="{{ mode }}">
 <fieldset><legend>Client{% if mode == 'comptant' %} (facultatif){% endif %}</legend>
@@ -5509,12 +5703,12 @@ CAISSE = r"""{% extends 'base.html' %}{% block content %}
 
 VENTE_DETAIL = r"""{% extends 'base.html' %}{% block content %}
 <h1>Vente n°{{ numero }} · {{ MODES_VENTE[v.mode] }}</h1>
-<p><a href="{{ url_for('ventes') }}">← Retour aux ventes</a> · <a href="{{ url_for('vente_facture', vente_id=v.id) }}">🧾 Facture imprimable</a> · <a href="{{ url_for('vente_bon', vente_id=v.id) }}">🖨️ Bon de vente (avec lots)</a></p>
+<p><a href="{{ url_for('ventes') }}">{{ ic('gauche') }} Retour aux ventes</a> · <a href="{{ url_for('vente_facture', vente_id=v.id) }}">{{ ic('recu') }} Facture imprimable</a> · <a href="{{ url_for('vente_bon', vente_id=v.id) }}">{{ ic('imprimante') }} Bon de vente (avec lots)</a></p>
 <div class="cartes">
-<div class="carte c-bleu"><span class="ico">🧾</span><div><b>{{ total|nombre }}</b><small>Total ({{ devise }})</small></div></div>
-{% if v.mode == 'terme' %}<div class="carte c-vert"><span class="ico">💵</span><div><b>{{ paye|nombre }}</b><small>Déjà payé</small></div></div>
-<div class="carte {{ 'c-rouge' if etat == 'en retard' else 'c-orange' if solde else 'c-vert' }}"><span class="ico">⏳</span><div><b>{{ solde|nombre }}</b><small>Reste à payer · {{ etat }}{% if v.echeance %} · échéance {{ v.echeance|date_fr }}{% endif %}</small></div></div>
-{% else %}<div class="carte c-vert"><span class="ico">✅</span><div><b>{{ etat or '—' }}</b><small>Paiement</small></div></div>{% endif %}
+<div class="carte c-bleu"><span class="ico">{{ ic('recu') }}</span><div><b>{{ total|nombre }}</b><small>Total ({{ devise }})</small></div></div>
+{% if v.mode == 'terme' %}<div class="carte c-vert"><span class="ico">{{ ic('billets') }}</span><div><b>{{ paye|nombre }}</b><small>Déjà payé</small></div></div>
+<div class="carte {{ 'c-rouge' if etat == 'en retard' else 'c-orange' if solde else 'c-vert' }}"><span class="ico">{{ ic('sablier') }}</span><div><b>{{ solde|nombre }}</b><small>Reste à payer · {{ etat }}{% if v.echeance %} · échéance {{ v.echeance|date_fr }}{% endif %}</small></div></div>
+{% else %}<div class="carte c-vert"><span class="ico">{{ ic('valide') }}</span><div><b>{{ etat or '—' }}</b><small>Paiement</small></div></div>{% endif %}
 </div>
 <p>Client : <b>{{ v.client }}</b>{% if adresse %} · {{ adresse }}{% endif %}{% if v.client_tel %} · Tél : {{ v.client_tel }}{% endif %}<br>
 Date : {{ v.date|replace('T', ' ') }} · Vendeur : {{ v.username }}</p>
@@ -5534,8 +5728,8 @@ Date : {{ v.date|replace('T', ' ') }} · Vendeur : {{ v.username }}</p>
 
 FACTURE_VENTE = r"""{% extends 'base.html' %}{% block content %}
 <div class="no-print actions-bon">
-<button onclick="window.print()">🖨️ Imprimer la facture</button>
-<a href="{{ url_for('vente_detail', vente_id=v.id) }}">← Détail de la vente</a> · <a href="{{ url_for('ventes') }}">Toutes les ventes</a>
+<button onclick="window.print()">{{ ic('imprimante') }} Imprimer la facture</button>
+<a href="{{ url_for('vente_detail', vente_id=v.id) }}">{{ ic('gauche') }} Détail de la vente</a> · <a href="{{ url_for('ventes') }}">Toutes les ventes</a>
 <small>Astuce : choisissez « Enregistrer au format PDF » dans la fenêtre d'impression pour l'envoyer au client.</small>
 </div>
 <div class="fact">
@@ -5562,14 +5756,14 @@ FACTURE_VENTE = r"""{% extends 'base.html' %}{% block content %}
 {% endblock %}"""
 
 DONNEES_ESSAI = """{% extends 'base.html' %}{% block content %}
-<h1>🧹 Supprimer les données d'essai</h1>
+<h1>Supprimer les données d'essai</h1>
 <p class="compte">Réservé à l'administrateur. Sert à effacer les ventes et achats faits pour tester la plateforme, avant la mise en service.
 Les comptes utilisateurs, le catalogue des vaccins, les référentiels et le journal d'audit ne sont jamais touchés.</p>
 <div class="cartes">
-<div class="carte c-bleu"><span class="ico">🛒</span><div><b>{{ nb.ventes }}</b><small>Vente(s)</small></div></div>
-<div class="carte c-bleu"><span class="ico">🧾</span><div><b>{{ nb.commandes }}</b><small>Commande(s) · {{ nb.factures }} facture(s)</small></div></div>
-<div class="carte c-bleu"><span class="ico">📦</span><div><b>{{ nb.lots }}</b><small>Lot(s) · {{ nb.inventaires }} inventaire(s)</small></div></div>
-<div class="carte c-bleu"><span class="ico">👥</span><div><b>{{ nb.clients }}</b><small>Client(s)</small></div></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('panier') }}</span><div><b>{{ nb.ventes }}</b><small>Vente(s)</small></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('recu') }}</span><div><b>{{ nb.commandes }}</b><small>Commande(s) · {{ nb.factures }} facture(s)</small></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('colis') }}</span><div><b>{{ nb.lots }}</b><small>Lot(s) · {{ nb.inventaires }} inventaire(s)</small></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('utilisateurs') }}</span><div><b>{{ nb.clients }}</b><small>Client(s)</small></div></div></div>
 <form class="card" method="post" style="display:block;max-width:760px"
 onsubmit="return confirm('Cette suppression est définitive. Continuer ?')">
 <p><b>Que faut-il supprimer ?</b></p>
@@ -5598,7 +5792,7 @@ MESSAGES = """{% extends 'base.html' %}{% block content %}
 INVENTAIRES = """{% extends 'base.html' %}{% block content %}
 <h1>Inventaires</h1>
 {% if droits.inventaire_compter %}<form method="post" action="{{ url_for('inventaire_nouveau') }}"><button>Démarrer un nouvel inventaire</button></form>{% endif %}
-<h2>Historique</h2><input class="recherche" data-filtre="t-inv" placeholder="🔍 Rechercher un inventaire…">
+<h2>Historique</h2><input class="recherche" data-filtre="t-inv" placeholder="Rechercher un inventaire…">
 <table id="t-inv"><tr><th>N°</th><th>Date</th><th>Responsable</th><th>État</th><th></th></tr>
 {% for i in inventaires %}<tr><td>{{ i.id }}</td><td>{{ i.date }}</td><td>{{ i.username }}</td>
 <td>{{ 'Validé' if i.valide else 'En cours' }}</td>
@@ -5622,7 +5816,7 @@ INVENTAIRE = """{% extends 'base.html' %}{% block content %}
 AUDIT = """{% extends 'base.html' %}{% block content %}
 <h1>Journal d'audit</h1>
 <form class="filtres" method="get" action="{{ url_for('journal') }}">
-<input class="grand" name="q" value="{{ flt.q }}" placeholder="🔍 Action ou utilisateur…">
+<input class="grand" name="q" value="{{ flt.q }}" placeholder="Action ou utilisateur…">
 <select name="utilisateur_id"><option value="">Tous les utilisateurs</option>{% for u in users %}<option value="{{ u.id }}" {% if flt.utilisateur_id == u.id|string %}selected{% endif %}>{{ u.username }}</option>{% endfor %}</select>
 <label>Du<input type="date" name="du" value="{{ flt.du }}"></label>
 <label>Au<input type="date" name="au" value="{{ flt.au }}"></label>
@@ -5644,7 +5838,7 @@ MOTDEPASSE = """{% extends 'base.html' %}{% block content %}
 
 UTILISATEURS = """{% extends 'base.html' %}{% block content %}
 <h1>Gestion des utilisateurs</h1>
-{% if mdp %}<div class="mdp-box">🔑 Compte <b>{{ mdp.username }}</b> · mot de passe temporaire :
+{% if mdp %}<div class="mdp-box">{{ ic('cle') }} Compte <b>{{ mdp.username }}</b> · mot de passe temporaire :
 <code>{{ mdp.mdp }}</code><br><small>Notez-le maintenant : il ne sera plus affiché. L'utilisateur devra
 en choisir un nouveau à sa première connexion.</small></div>{% endif %}
 <form class="card" method="post" action="{{ url_for('utilisateur_nouveau') }}">
@@ -5653,7 +5847,7 @@ placeholder="ex. Mr Sow"></label>
 <label>Rôle<select name="role" required><option value="">— Choisir un rôle —</option>{% for r in ROLES %}<option value="{{ r }}">{{ r|role_lib }}</option>{% endfor %}</select></label>
 <label>E-mail (facultatif)<input name="email" type="email" maxlength="120" placeholder="prenom.nom@exemple.sn"></label>
 <button>Créer le compte</button></form>
-<p><a href="{{ url_for('email_parametres') }}">✉️ Paramètres des notifications par e-mail</a></p>
+<p><a href="{{ url_for('email_parametres') }}">{{ ic('mail') }} Paramètres des notifications par e-mail</a></p>
 <p><small>Tout nouveau compte reçoit le mot de passe standard Vaccin@2027 ; l'utilisateur doit le changer à sa première connexion.</small></p>
 <h2>Comptes</h2>
 <table><tr><th>Utilisateur</th><th>Code</th><th>Rôle</th><th>E-mail</th><th>État</th><th>Dernière connexion</th><th>Actions</th></tr>
@@ -5669,7 +5863,7 @@ placeholder="ex. Mr Sow"></label>
 {% if u.doit_changer_mdp %}<span class="badge b-quarantaine">mot de passe temporaire</span>{% endif %}</td>
 <td>{{ (u.derniere or '—')|replace('T', ' ') }}</td>
 <td>{% if u.id != moi %}
-{% if u.bloque %}<form method="post" action="{{ url_for('utilisateur_debloquer', uid=u.id) }}" class="en-ligne"><button class="petit">🔓 Débloquer</button></form>{% endif %}
+{% if u.bloque %}<form method="post" action="{{ url_for('utilisateur_debloquer', uid=u.id) }}" class="en-ligne"><button class="petit">{{ ic('cadenas-ouvert') }} Débloquer</button></form>{% endif %}
 <form method="post" action="{{ url_for('utilisateur_reinit', uid=u.id) }}" class="en-ligne"
 onsubmit="return confirm('Réinitialiser le mot de passe de {{ u.username }} ?')"><button class="petit">Réinitialiser</button></form>
 <form method="post" action="{{ url_for('utilisateur_etat', uid=u.id) }}" class="en-ligne"
@@ -5685,8 +5879,8 @@ Le code (GS01, RV01…) remplace le nom sur les documents imprimés.</small></p>
 
 VENTE_BON = """{% extends 'base.html' %}{% block content %}
 <div class="no-print actions-bon">
-<button onclick="window.print()">🖨️ Imprimer le bon</button>
-<a href="{{ url_for('ventes') }}">← Retour aux ventes</a>
+<button onclick="window.print()">{{ ic('imprimante') }} Imprimer le bon</button>
+<a href="{{ url_for('ventes') }}">{{ ic('gauche') }} Retour aux ventes</a>
 <small>Astuce : dans la fenêtre d'impression, choisissez « Enregistrer au format PDF » pour l'envoyer au client.</small>
 </div>
 <div class="bon">
@@ -5722,19 +5916,19 @@ REF_HUB = """{% extends 'base.html' %}{% block content %}
 <p class="compte">Les listes de base utilisées dans toute la plateforme. Une valeur modifiée ici est mise à jour partout.</p>
 <div class="cartes">
 {% for c in cartes %}<a class="carte c-vert" href="{{ url_for('ref_liste', cle=c.cle) }}" style="text-decoration:none;color:inherit">
-<span class="ico">{{ c.ico }}</span><div><b>{{ c.n }}</b><small>{{ c.titre }} · {{ c.desc }}</small></div></a>{% endfor %}
+<span class="ico">{{ ic(c.ico) }}</span><div><b>{{ c.n }}</b><small>{{ c.titre }} · {{ c.desc }}</small></div></a>{% endfor %}
 {% if droits.clients_voir %}<a class="carte c-bleu" href="{{ url_for('clients') }}" style="text-decoration:none;color:inherit">
-<span class="ico">👥</span><div><b>{{ nb_clients }}</b><small>Clients · gérés dans la page Clients</small></div></a>{% endif %}
+<span class="ico">{{ ic('utilisateurs') }}</span><div><b>{{ nb_clients }}</b><small>Clients · gérés dans la page Clients</small></div></a>{% endif %}
 </div>
 {% endblock %}"""
 
 REF_LISTE = """{% extends 'base.html' %}{% block content %}
-<h1>{{ conf.ico }} {{ conf.titre }}</h1>
-<p><a href="{{ url_for('referentiels') }}">← Référentiels</a></p>
+<h1>{{ conf.titre }}</h1>
+<p><a href="{{ url_for('referentiels') }}">{{ ic('gauche') }} Référentiels</a></p>
 {% if droits.referentiels_gerer %}<form class="card" method="post">
 {% for nom, libelle, requis in conf.champs %}<label>{{ libelle }}<input name="{{ nom }}" {% if requis %}required{% endif %} maxlength="200"></label>
 {% endfor %}<button>Ajouter</button></form>{% endif %}
-<input class="recherche" data-filtre="t-ref" placeholder="🔍 Rechercher…">
+<input class="recherche" data-filtre="t-ref" placeholder="Rechercher…">
 <p class="compte">{{ lignes|length }} élément(s) ·
 {% if archives %}<a href="{{ url_for('ref_liste', cle=cle) }}">Masquer les archivés</a>{% else %}<a href="{{ url_for('ref_liste', cle=cle, archives=1) }}">Afficher les archivés</a>{% endif %}</p>
 <table id="t-ref"><tr>{% for nom, libelle, requis in conf.champs %}<th>{{ libelle }}</th>{% endfor %}
@@ -5751,8 +5945,8 @@ onsubmit='return confirm({{ ("Supprimer définitivement « " ~ r.nom ~ " » ?")|
 </table>{% endblock %}"""
 
 REF_EDIT = """{% extends 'base.html' %}{% block content %}
-<h1>{{ conf.ico }} {{ conf.titre }} · {{ r.nom }}</h1>
-<p><a href="{{ url_for('ref_liste', cle=cle) }}">← {{ conf.titre }}</a></p>
+<h1>{{ conf.titre }} · {{ r.nom }}</h1>
+<p><a href="{{ url_for('ref_liste', cle=cle) }}">{{ ic('gauche') }} {{ conf.titre }}</a></p>
 <form class="card" method="post">
 {% for nom, libelle, requis in conf.champs %}<label>{{ libelle }}<input name="{{ nom }}" value="{{ r[nom] or '' }}" {% if requis %}required{% endif %} maxlength="200" {% if not droits.referentiels_gerer %}readonly{% endif %}></label>
 {% endfor %}{% if droits.referentiels_gerer %}<button>Enregistrer</button>{% endif %}</form>
@@ -5775,7 +5969,7 @@ ARTICLES = """{% extends 'base.html' %}{% block content %}
 <a href="{{ url_for('referentiels') }}">Référentiels</a>.</small></p></form>{% endif %}
 <h2>Liste</h2>
 <form class="filtres" method="get" action="{{ url_for('articles') }}">
-<input class="grand" name="q" value="{{ flt.q }}" placeholder="🔍 Nom ou référence…">
+<input class="grand" name="q" value="{{ flt.q }}" placeholder="Nom ou référence…">
 <select name="categorie_id"><option value="">Toutes les catégories</option>{% for x in categories %}<option value="{{ x.id }}" {% if flt.categorie_id == x.id|string %}selected{% endif %}>{{ x.nom }}</option>{% endfor %}</select>
 <select name="fournisseur_id"><option value="">Tous les fournisseurs</option>{% for x in fournisseurs %}<option value="{{ x.id }}" {% if flt.fournisseur_id == x.id|string %}selected{% endif %}>{{ x.nom }}</option>{% endfor %}</select>
 <select name="emplacement_id"><option value="">Tous les emplacements</option>{% for x in emplacements %}<option value="{{ x.id }}" {% if flt.emplacement_id == x.id|string %}selected{% endif %}>{{ x.nom }}</option>{% endfor %}</select>
@@ -5783,7 +5977,7 @@ ARTICLES = """{% extends 'base.html' %}{% block content %}
 <label class="case"><input type="checkbox" name="archives" value="1" {% if flt.archives == '1' %}checked{% endif %}> Inclure les archivés</label>
 <button>Filtrer</button><a class="lien-reset" href="{{ url_for('articles') }}">Réinitialiser</a></form>
 <p class="compte">{{ articles|length }} article(s){% if fq %} · filtres actifs{% endif %}
-&nbsp;<a class="btn-export" href="{{ url_for('export_articles', **fq) }}">📥 Exporter en Excel</a></p>
+&nbsp;<a class="btn-export" href="{{ url_for('export_articles', **fq) }}">{{ ic('telecharger') }} Exporter en Excel</a></p>
 <table><tr><th>Article</th><th>Catégorie</th><th>Unité</th><th>Fournisseur</th><th>Emplacement</th><th>Stock</th><th>Seuil</th><th>État</th></tr>
 {% for a in articles %}<tr><td><a href="{{ url_for('article_detail', aid=a.id) }}">{{ a.nom }}</a>{% if a.reference %}<br><small>Réf. {{ a.reference }}</small>{% endif %}</td>
 <td>{{ a.categorie_nom }}</td><td>{{ a.unite_nom }}</td><td>{{ a.fournisseur_nom or '' }}</td><td>{{ a.emplacement_nom or '' }}</td>
@@ -5794,10 +5988,10 @@ ARTICLES = """{% extends 'base.html' %}{% block content %}
 
 ARTICLE = """{% extends 'base.html' %}{% block content %}
 <h1>{{ a.nom }}{% if not a.actif %} <span class="badge b-quarantaine">Archivé</span>{% endif %}</h1>
-<p><a href="{{ url_for('articles') }}">← Articles</a></p>
+<p><a href="{{ url_for('articles') }}">{{ ic('gauche') }} Articles</a></p>
 <div class="cartes">
-<div class="carte {{ 'c-rouge' if a.stock < a.seuil_min else 'c-vert' }}"><span class="ico">🧰</span><div><b>{{ a.stock }}</b><small>{{ a.unite_nom }} en stock</small></div></div>
-<div class="carte c-bleu"><span class="ico">📉</span><div><b>{{ a.seuil_min }}</b><small>Seuil minimal{% if a.stock < a.seuil_min %} · <em>stock bas</em>{% endif %}</small></div></div>
+<div class="carte {{ 'c-rouge' if a.stock < a.seuil_min else 'c-vert' }}"><span class="ico">{{ ic('outils') }}</span><div><b>{{ a.stock }}</b><small>{{ a.unite_nom }} en stock</small></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('baisse') }}</span><div><b>{{ a.seuil_min }}</b><small>Seuil minimal{% if a.stock < a.seuil_min %} · <em>stock bas</em>{% endif %}</small></div></div>
 </div>
 {% if droits.articles_mouvements and a.actif %}<h2>Enregistrer un mouvement</h2>
 <form class="card" method="post" action="{{ url_for('article_mouvement', aid=a.id) }}" enctype="multipart/form-data">
@@ -5828,19 +6022,19 @@ onsubmit='return confirm({{ ("Supprimer définitivement « " ~ a.nom ~ " » et s
 <table><tr><th>Date</th><th>Type</th><th>Quantité</th><th>Stock après</th><th>Motif</th><th>Utilisateur</th><th>Documents</th></tr>
 {% for m in historique %}<tr><td>{{ m.date|replace('T', ' ') }}</td><td>{{ NATURES.get(m.nature, m.nature) }}</td>
 <td>{{ '+' if m.delta > 0 }}{{ m.delta }}</td><td>{{ m.solde }}</td><td>{{ m.motif or '' }}</td><td>{{ m.username or '' }}</td>
-<td>{% for p in m.docs %}<a href="{{ url_for('piece_telecharger', pid=p.id) }}" title="{{ p.nom_original }}">📎 {{ TYPES_DOC[p.type_doc] }}</a>{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
+<td>{% for p in m.docs %}<a href="{{ url_for('piece_telecharger', pid=p.id) }}" title="{{ p.nom_original }}">{{ ic('trombone') }} {{ TYPES_DOC[p.type_doc] }}</a>{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
 {% else %}<tr><td colspan="7">Aucun mouvement enregistré.</td></tr>{% endfor %}
 </table>{% endblock %}"""
 
 VACCIN = """{% extends 'base.html' %}{% block content %}
 <h1>{{ v.nom }}{% if not v.actif %} <span class="badge b-quarantaine">Archivé</span>{% endif %}</h1>
-<p><a href="{{ url_for('vaccins') }}">← Catalogue des vaccins</a> · <a href="{{ url_for('lots') }}">Lots</a></p>
+<p><a href="{{ url_for('vaccins') }}">{{ ic('gauche') }} Catalogue des vaccins</a> · <a href="{{ url_for('lots') }}">Lots</a></p>
 <div class="cartes">
-<div class="carte {{ 'c-rouge' if vendable < v.seuil_min else 'c-vert' }}"><span class="ico">💉</span><div><b>{{ vendable }}</b><small>Disponible à la vente</small></div></div>
-<div class="carte c-bleu"><span class="ico">📦</span><div><b>{{ stock_total }}</b><small>Stock total (tous statuts)</small></div></div>
-<div class="carte c-bleu"><span class="ico">🧪</span><div><b>{{ temoins }}</b><small>Témoins mis de côté</small></div></div>
-<div class="carte c-bleu"><span class="ico">🗑️</span><div><b>{{ detruites }}</b><small>Doses détruites</small></div></div>
-<div class="carte c-bleu"><span class="ico">📉</span><div><b>{{ v.seuil_min }}</b><small>Seuil minimal</small></div></div>
+<div class="carte {{ 'c-rouge' if vendable < v.seuil_min else 'c-vert' }}"><span class="ico">{{ ic('seringue') }}</span><div><b>{{ vendable }}</b><small>Disponible à la vente</small></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('colis') }}</span><div><b>{{ stock_total }}</b><small>Stock total (tous statuts)</small></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('fiole') }}</span><div><b>{{ temoins }}</b><small>Témoins mis de côté</small></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('poubelle') }}</span><div><b>{{ detruites }}</b><small>Doses détruites</small></div></div>
+<div class="carte c-bleu"><span class="ico">{{ ic('baisse') }}</span><div><b>{{ v.seuil_min }}</b><small>Seuil minimal</small></div></div>
 </div>
 <h2>Fiche du vaccin</h2>
 {% if droits.vaccins_gerer %}<form class="card" method="post">
@@ -5870,7 +6064,7 @@ Doses par flacon : <b>{{ v.doses_par_flacon }}</b> · Prix unitaire : <b>{{ v.pr
 <button>Ajouter la fiche</button></form>{% endif %}
 <table><tr><th>Titre</th><th>Version</th><th>Fichier</th><th>Ajoutée le</th><th>Par</th><th></th></tr>
 {% for f in fiches %}<tr><td>{{ f.titre }}</td><td>{{ f.version or '' }}</td>
-<td><a href="{{ url_for('fiche_telecharger', fid=f.id) }}">📄 {{ f.nom_original }}</a> <small>({{ (f.taille / 1024)|round(0)|int }} Ko)</small></td>
+<td><a href="{{ url_for('fiche_telecharger', fid=f.id) }}">{{ ic('fichier') }} {{ f.nom_original }}</a> <small>({{ (f.taille / 1024)|round(0)|int }} Ko)</small></td>
 <td>{{ f.date|replace('T', ' ') }}</td><td>{{ f.username or '' }}</td>
 <td>{% if droits.vaccins_gerer %}<form method="post" action="{{ url_for('fiche_supprimer', fid=f.id) }}" class="en-ligne"
 onsubmit='return confirm({{ ("Supprimer la fiche « " ~ f.titre ~ " » ?")|tojson }})'><button class="petit danger">Supprimer</button></form>{% endif %}</td></tr>
@@ -5881,7 +6075,7 @@ COMMANDES = """{% extends 'base.html' %}{% block content %}
 <h1>Commandes clients</h1>
 {% if droits.commandes_saisir %}<p><a href="{{ url_for('commande_nouvelle') }}"><button>Nouvelle commande</button></a></p>{% endif %}
 <form class="filtres" method="get" action="{{ url_for('commandes') }}">
-<input class="grand" name="q" value="{{ flt.q }}" placeholder="🔍 N° de commande ou client…">
+<input class="grand" name="q" value="{{ flt.q }}" placeholder="N° de commande ou client…">
 <select name="statut"><option value="">Tous les statuts</option>{% for st in statuts %}<option {% if flt.statut == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select>
 <label>Du<input type="date" name="du" value="{{ flt.du }}"></label>
 <label>Au<input type="date" name="au" value="{{ flt.au }}"></label>
@@ -5889,7 +6083,7 @@ COMMANDES = """{% extends 'base.html' %}{% block content %}
 <label class="case"><input type="checkbox" name="archives" value="1" {% if flt.archives == '1' %}checked{% endif %}> Inclure les archivées</label>
 <button>Filtrer</button><a class="lien-reset" href="{{ url_for('commandes') }}">Réinitialiser</a></form>
 <p class="compte">{{ commandes|length }} commande(s) · total hors annulées : <b>{{ total|nombre }} {{ devise }}</b>{% if fq %} · filtres actifs{% endif %}
-&nbsp;<a class="btn-export" href="{{ url_for('export_commandes', **fq) }}">📥 Exporter en Excel</a></p>
+&nbsp;<a class="btn-export" href="{{ url_for('export_commandes', **fq) }}">{{ ic('telecharger') }} Exporter en Excel</a></p>
 <table><tr><th>N°</th><th>Date</th><th>Client</th><th>Lignes</th><th>Total</th><th>Statut</th><th>Créée par</th></tr>
 {% for o in commandes %}<tr><td><a href="{{ url_for('commande_detail', cmd_id=o.id) }}">{{ o.numero }}</a></td>
 <td>{{ o.date|replace('T', ' ') }}</td><td>{{ o.client_nom }}{% if o.client_nature %}<br><small>{{ o.client_nature }}</small>{% endif %}</td>
@@ -5904,12 +6098,12 @@ COMMANDE_FORM = """{% extends 'base.html' %}{% block content %}
 <td><input name="ligne_quantite" type="number" min="1" class="l-qte" placeholder="Quantité" value="{{ l.quantite|default('') }}"></td>
 <td><input name="ligne_prix" type="text" inputmode="decimal" class="l-prix" placeholder="Prix unitaire" value="{{ l.prix|default('') }}"></td>
 <td class="num l-montant">0</td>
-<td><button type="button" class="petit danger l-suppr" title="Retirer la ligne">✕</button></td></tr>{% endmacro %}
+<td><button type="button" class="petit danger l-suppr" title="Retirer la ligne">{{ ic('croix') }}</button></td></tr>{% endmacro %}
 <h1>{% if cmd %}Modifier la commande {{ cmd.numero }}{% else %}Nouvelle commande{% endif %}</h1>
-<p><a href="{{ url_for('commande_detail', cmd_id=cmd.id) if cmd else url_for('commandes') }}">← Retour</a></p>
+<p><a href="{{ url_for('commande_detail', cmd_id=cmd.id) if cmd else url_for('commandes') }}">{{ ic('gauche') }} Retour</a></p>
 <form method="post" class="bloc-cmd">
 <fieldset><legend>Client</legend>
-<div class="grille"><label>Client existant<select name="client_id" id="client-select"><option value="">➕ Nouveau client (à saisir ci-dessous)</option>
+<div class="grille"><label>Client existant<select name="client_id" id="client-select"><option value="">Nouveau client (à saisir ci-dessous)</option>
 {% for c in clients %}<option value="{{ c.id }}" {% if saisie and saisie.client_id == c.id|string %}selected{% endif %}>{{ c.nom }}{% if c.nature %} ({{ c.nature }}){% endif %}</option>{% endfor %}</select></label></div>
 {% set n = (saisie.nouveau if saisie else {}) or {} %}
 <div id="nouveau-client" class="grille" style="margin-top:10px">
@@ -5969,23 +6163,23 @@ COMMANDE_FORM = """{% extends 'base.html' %}{% block content %}
 
 COMMANDE = """{% extends 'base.html' %}{% block content %}
 <div class="no-print actions-bon">
-<button onclick="window.print()">🖨️ Imprimer</button>
-<a href="{{ url_for('commandes') }}">← Retour aux commandes</a>
-{% if act.modifier %}<a href="{{ url_for('commande_modifier', cmd_id=cmd.id) }}"><button type="button">✏️ Modifier</button></a>{% endif %}
+<button onclick="window.print()">{{ ic('imprimante') }} Imprimer</button>
+<a href="{{ url_for('commandes') }}">{{ ic('gauche') }} Retour aux commandes</a>
+{% if act.modifier %}<a href="{{ url_for('commande_modifier', cmd_id=cmd.id) }}"><button type="button">{{ ic('crayon') }} Modifier</button></a>{% endif %}
 {% if act.annuler %}<form method="post" action="{{ url_for('commande_annuler', cmd_id=cmd.id) }}" onsubmit="return confirm('Annuler cette commande ?')"><button class="danger">Annuler la commande</button></form>{% endif %}
 </div>
 <div class="no-print circuit">
-{% if cmd.statut == 'annulée' %}<p class="alerte-circuit">⛔ Cette commande est annulée.</p>
-{% else %}<ol class="etapes">{% for e in etapes %}<li class="{{ e.etat }}"><span class="pastille">{% if e.etat == 'fait' %}✓{% else %}{{ loop.index }}{% endif %}</span><b>{{ e.libelle }}</b><small>{{ e.acteur }}</small></li>{% endfor %}</ol>{% endif %}
+{% if cmd.statut == 'annulée' %}<p class="alerte-circuit">{{ ic('interdit') }} Cette commande est annulée.</p>
+{% else %}<ol class="etapes">{% for e in etapes %}<li class="{{ e.etat }}"><span class="pastille">{% if e.etat == 'fait' %}{{ ic('coche') }}{% else %}{{ loop.index }}{% endif %}</span><b>{{ e.libelle }}</b><small>{{ e.acteur }}</small></li>{% endfor %}</ol>{% endif %}
 <div class="panneau-actions">
-{% if act.transmettre %}<form method="post" action="{{ url_for('commande_transmettre', cmd_id=cmd.id) }}" onsubmit="return confirm('Transmettre cette commande au responsable stock ? Elle ne sera plus modifiable.')"><button>📤 Transmettre pour contrôle</button></form>{% endif %}
-{% if act.facturer %}<form method="post" action="{{ url_for('commande_facturer', cmd_id=cmd.id) }}" onsubmit="return confirm('Les quantités sont-elles contrôlées ? La facture va être générée.')"><button>🧾 Contrôler et générer la facture</button></form>{% endif %}
-{% if act.valider %}<form method="post" action="{{ url_for('commande_valider', cmd_id=cmd.id) }}" onsubmit="return confirm('Valider cette vente ?')"><button>✅ Valider la vente</button></form>{% endif %}
-{% if act.livrer %}<form method="post" action="{{ url_for('commande_livrer', cmd_id=cmd.id) }}" onsubmit="return confirm('Livrer cette commande ? Le stock sera décrémenté (le lot qui expire en premier est livré en premier).')"><button>📦 Livrer et déstocker</button></form>{% endif %}
-{% if act.archiver %}<form method="post" action="{{ url_for('commande_archiver', cmd_id=cmd.id) }}" onsubmit="return confirm('Archiver ce dossier ?')"><button>🗄️ Archiver le dossier</button></form>{% endif %}
+{% if act.transmettre %}<form method="post" action="{{ url_for('commande_transmettre', cmd_id=cmd.id) }}" onsubmit="return confirm('Transmettre cette commande au responsable stock ? Elle ne sera plus modifiable.')"><button>{{ ic('envoyer') }} Transmettre pour contrôle</button></form>{% endif %}
+{% if act.facturer %}<form method="post" action="{{ url_for('commande_facturer', cmd_id=cmd.id) }}" onsubmit="return confirm('Les quantités sont-elles contrôlées ? La facture va être générée.')"><button>{{ ic('recu') }} Contrôler et générer la facture</button></form>{% endif %}
+{% if act.valider %}<form method="post" action="{{ url_for('commande_valider', cmd_id=cmd.id) }}" onsubmit="return confirm('Valider cette vente ?')"><button>{{ ic('valide') }} Valider la vente</button></form>{% endif %}
+{% if act.livrer %}<form method="post" action="{{ url_for('commande_livrer', cmd_id=cmd.id) }}" onsubmit="return confirm('Livrer cette commande ? Le stock sera décrémenté (le lot qui expire en premier est livré en premier).')"><button>{{ ic('colis') }} Livrer et déstocker</button></form>{% endif %}
+{% if act.archiver %}<form method="post" action="{{ url_for('commande_archiver', cmd_id=cmd.id) }}" onsubmit="return confirm('Archiver ce dossier ?')"><button>{{ ic('archive') }} Archiver le dossier</button></form>{% endif %}
 {% if act.renvoyer %}<form method="post" action="{{ url_for('commande_renvoyer', cmd_id=cmd.id) }}" class="renvoi">
-<input name="motif" required maxlength="300" placeholder="Motif du renvoi (obligatoire)"><button class="danger">↩ Renvoyer pour correction</button></form>{% endif %}
-{% if attente %}<p class="attente">⏳ En attente de : <b>{{ attente }}</b></p>{% endif %}
+<input name="motif" required maxlength="300" placeholder="Motif du renvoi (obligatoire)"><button class="danger">{{ ic('retour') }} Renvoyer pour correction</button></form>{% endif %}
+{% if attente %}<p class="attente">{{ ic('sablier') }} En attente de : <b>{{ attente }}</b></p>{% endif %}
 </div>
 </div>
 <div class="bon">
@@ -6008,7 +6202,7 @@ COMMANDE = """{% extends 'base.html' %}{% block content %}
 <tr><th>Désignation</th><th class="num">Quantité</th><th class="num">Prix unitaire ({{ devise }})</th><th class="num">Montant ({{ devise }})</th><th class="no-print">Disponibilité actuelle</th></tr>
 {% for l in lignes %}<tr><td>{{ l.vaccin_nom }}<br><small>Conservation : {{ l.temp_min|nombre }} à {{ l.temp_max|nombre }} °C</small></td>
 <td class="num">{{ l.quantite }}</td><td class="num">{{ l.prix_unitaire|nombre }}</td><td class="num">{{ l.montant|nombre }}</td>
-<td class="no-print">{% if cmd.statut in ('enregistrée', 'transmise', 'facturée', 'validée') %}{% if l.insuffisant %}<span class="badge b-périmé">⚠ stock vendable : {{ l.vendable }}</span>{% else %}<span class="badge b-conforme">OK (vendable : {{ l.vendable }})</span>{% endif %}{% endif %}</td></tr>{% endfor %}
+<td class="no-print">{% if cmd.statut in ('enregistrée', 'transmise', 'facturée', 'validée') %}{% if l.insuffisant %}<span class="badge b-périmé">{{ ic('alerte') }} stock vendable : {{ l.vendable }}</span>{% else %}<span class="badge b-conforme">OK (vendable : {{ l.vendable }})</span>{% endif %}{% endif %}</td></tr>{% endfor %}
 <tfoot><tr><td>TOTAL</td><td class="num">{{ lignes|sum(attribute='quantite') }}</td><td></td><td class="num">{{ cmd.total|nombre }} {{ devise }}</td><td class="no-print"></td></tr></tfoot>
 </table>
 <div class="bon-sign"><div>Le responsable vente<br><small>(nom et signature)</small></div><div>Le client<br><small>(nom, date et signature)</small></div></div>
@@ -6017,9 +6211,9 @@ COMMANDE = """{% extends 'base.html' %}{% block content %}
 <div class="no-print">
 <h2>Documents liés</h2>
 <ul class="docs">
-{% for f in factures %}<li>🧾 Facture <a href="{{ url_for('facture_detail', fid=f.id) }}">{{ f.numero }}</a> <span class="badge b-{{ f.statut }}">{{ f.statut }}</span></li>{% endfor %}
-{% if livraison %}<li>📦 Bordereau de livraison <a href="{{ url_for('livraison_detail', liv_id=livraison.id) }}">{{ livraison.numero }}</a></li>
-{% if droits.ventes_voir %}<li>🛒 <a href="{{ url_for('vente_bon', vente_id=livraison.vente_id) }}">Bon de vente n°{{ livraison.vente_id }}</a></li>{% endif %}{% endif %}
+{% for f in factures %}<li>{{ ic('recu') }} Facture <a href="{{ url_for('facture_detail', fid=f.id) }}">{{ f.numero }}</a> <span class="badge b-{{ f.statut }}">{{ f.statut }}</span></li>{% endfor %}
+{% if livraison %}<li>{{ ic('colis') }} Bordereau de livraison <a href="{{ url_for('livraison_detail', liv_id=livraison.id) }}">{{ livraison.numero }}</a></li>
+{% if droits.ventes_voir %}<li>{{ ic('panier') }} <a href="{{ url_for('vente_bon', vente_id=livraison.vente_id) }}">Bon de vente n°{{ livraison.vente_id }}</a></li>{% endif %}{% endif %}
 {% if not factures and not livraison %}<li>Aucun document pour l'instant : la facture est générée après le contrôle du responsable stock.</li>{% endif %}
 </ul>
 {% if droits.pj_commande_voir %}{% from 'pieces.html' import bloc_pieces %}
@@ -6036,12 +6230,12 @@ COMMANDE = """{% extends 'base.html' %}{% block content %}
 FACTURES = """{% extends 'base.html' %}{% block content %}
 <h1>Factures</h1>
 <form class="filtres" method="get" action="{{ url_for('factures') }}">
-<input class="grand" name="q" value="{{ flt.q }}" placeholder="🔍 N° de facture, de commande ou client…">
+<input class="grand" name="q" value="{{ flt.q }}" placeholder="N° de facture, de commande ou client…">
 <select name="statut"><option value="">Tous les statuts</option><option {% if flt.statut == 'émise' %}selected{% endif %}>émise</option><option {% if flt.statut == 'annulée' %}selected{% endif %}>annulée</option></select>
 <label>Du<input type="date" name="du" value="{{ flt.du }}"></label><label>Au<input type="date" name="au" value="{{ flt.au }}"></label>
 <button>Filtrer</button><a class="lien-reset" href="{{ url_for('factures') }}">Réinitialiser</a></form>
 <p class="compte">{{ factures|length }} facture(s) · total des factures émises : <b>{{ total|nombre }} {{ devise }}</b>{% if fq %} · filtres actifs{% endif %}
-&nbsp;<a class="btn-export" href="{{ url_for('export_factures', **fq) }}">📥 Exporter en Excel</a></p>
+&nbsp;<a class="btn-export" href="{{ url_for('export_factures', **fq) }}">{{ ic('telecharger') }} Exporter en Excel</a></p>
 <table><tr><th>N°</th><th>Date</th><th>Commande</th><th>Client</th><th>Total</th><th>Statut</th><th>Validation CSA</th></tr>
 {% for f in factures %}<tr><td><a href="{{ url_for('facture_detail', fid=f.id) }}">{{ f.numero }}</a></td><td>{{ f.date|replace('T', ' ') }}</td>
 <td><a href="{{ url_for('commande_detail', cmd_id=f.commande_id) }}">{{ f.commande_numero }}</a></td><td>{{ f.client_nom }}</td>
@@ -6051,8 +6245,8 @@ FACTURES = """{% extends 'base.html' %}{% block content %}
 </table>{% endblock %}"""
 
 FACTURE = """{% extends 'base.html' %}{% block content %}
-<div class="no-print actions-bon"><button onclick="window.print()">🖨️ Imprimer</button>
-<a href="{{ url_for('commande_detail', cmd_id=f.commande_id) }}">← Commande {{ f.commande_numero }}</a>
+<div class="no-print actions-bon"><button onclick="window.print()">{{ ic('imprimante') }} Imprimer</button>
+<a href="{{ url_for('commande_detail', cmd_id=f.commande_id) }}">{{ ic('gauche') }} Commande {{ f.commande_numero }}</a>
 <a href="{{ url_for('factures') }}">Toutes les factures</a></div>
 <div class="bon">
 <img class="filigrane" src="{{ url_for('static', filename='fond.png') }}" alt="">
@@ -6079,8 +6273,8 @@ FACTURE = """{% extends 'base.html' %}{% block content %}
 {% endblock %}"""
 
 LIVRAISON = """{% extends 'base.html' %}{% block content %}
-<div class="no-print actions-bon"><button onclick="window.print()">🖨️ Imprimer</button>
-<a href="{{ url_for('commande_detail', cmd_id=liv.commande_id) }}">← Commande {{ liv.commande_numero }}</a></div>
+<div class="no-print actions-bon"><button onclick="window.print()">{{ ic('imprimante') }} Imprimer</button>
+<a href="{{ url_for('commande_detail', cmd_id=liv.commande_id) }}">{{ ic('gauche') }} Commande {{ liv.commande_numero }}</a></div>
 <div class="bon">
 <img class="filigrane" src="{{ url_for('static', filename='fond.png') }}" alt="">
 <div class="bon-entete">
@@ -6108,7 +6302,7 @@ LIVRAISON = """{% extends 'base.html' %}{% block content %}
 PIECES = """{% macro bloc_pieces(objet, oid, pieces, peut_ajouter, peut_retirer, types, libelles) %}
 <table><tr><th>Type</th><th>Titre</th><th>Fichier</th><th>Ajouté</th><th></th></tr>
 {% for p in pieces %}<tr><td>{{ libelles[p.type_doc] }}</td><td>{{ p.titre }}</td>
-<td><a href="{{ url_for('piece_telecharger', pid=p.id) }}">📎 {{ p.nom_original }}</a> <small>({{ (p.taille / 1024)|round(0)|int }} Ko)</small></td>
+<td><a href="{{ url_for('piece_telecharger', pid=p.id) }}">{{ ic('trombone') }} {{ p.nom_original }}</a> <small>({{ (p.taille / 1024)|round(0)|int }} Ko)</small></td>
 <td>{{ p.date|dt_fr }}<br><small>{{ p.username or '' }}</small></td>
 <td>{% if peut_retirer %}<form method="post" action="{{ url_for('piece_supprimer', pid=p.id) }}" class="en-ligne"
 onsubmit='return confirm({{ ("Supprimer le document « " ~ p.titre ~ " » ?")|tojson }})'><button class="petit danger">Supprimer</button></form>{% endif %}</td></tr>
@@ -6126,32 +6320,32 @@ RAPPORTS = """{% extends 'base.html' %}{% block content %}
 <b>archivé automatiquement</b> et consultable ci-dessous.</p>
 <div class="cartes" style="grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr))">
 <form class="carte c-vert rapport-carte" method="post" action="{{ url_for('rapport_mensuel_generer') }}"><div style="width:100%">
-<b style="font-size:17px">📅 Rapport mensuel</b><small>Mouvements, livraisons, chiffre d'affaires, destructions, articles, lots à surveiller.</small>
+<b style="font-size:17px">{{ ic('calendrier') }} Rapport mensuel</b><small>Mouvements, livraisons, chiffre d'affaires, destructions, articles, lots à surveiller.</small>
 <label>Mois<input name="mois" type="month" value="{{ mois_defaut }}" required pattern="[0-9]{4}-[0-9]{2}" placeholder="2026-10"></label>
 <label class="case" style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" name="envoyer" value="1"> Envoyer aussi par e-mail aux abonnés</label>
 <div class="boutons"><button>Générer et archiver (PDF)</button>
 <button class="secondaire" formmethod="get" formaction="{{ url_for('rapport_excel', genre='mensuel') }}">Excel</button></div></div></form>
 <form class="carte c-bleu rapport-carte" method="get" action="{{ url_for('rapport_pdf', genre='annuel') }}"><div style="width:100%">
-<b style="font-size:17px">🗓️ Rapport annuel</b><small>Évolution mois par mois et totaux de l'année.</small>
+<b style="font-size:17px">{{ ic('calendrier') }} Rapport annuel</b><small>Évolution mois par mois et totaux de l'année.</small>
 <label>Année<input name="annee" type="number" min="2000" max="2100" value="{{ annee_defaut }}" required></label>
 <div class="boutons"><button>PDF</button><button class="secondaire" formaction="{{ url_for('rapport_excel', genre='annuel') }}">Excel</button></div></div></form>
 <form class="carte c-bleu rapport-carte" method="get" action="{{ url_for('rapport_pdf', genre='type') }}"><div style="width:100%">
-<b style="font-size:17px">🧪 Rapport par type de vaccin</b><small>Viral, bactérien, vivant atténué, inactivé : stock, livraisons, destructions, chiffre d'affaires.</small>
+<b style="font-size:17px">{{ ic('fiole') }} Rapport par type de vaccin</b><small>Viral, bactérien, vivant atténué, inactivé : stock, livraisons, destructions, chiffre d'affaires.</small>
 <div class="grille"><label>Du<input type="date" name="du" value="{{ du_defaut }}" required></label><label>Au<input type="date" name="au" value="{{ au_defaut }}" required></label></div>
 <div class="boutons"><button>PDF</button><button class="secondaire" formaction="{{ url_for('rapport_excel', genre='type') }}">Excel</button></div></div></form>
 <form class="carte c-vert rapport-carte" method="get" action="{{ url_for('rapport_pdf', genre='global') }}"><div style="width:100%">
-<b style="font-size:17px">📊 Rapport global</b><small>Situation du jour : stocks, alertes, lots à surveiller, commandes, cumul depuis le début.</small>
+<b style="font-size:17px">{{ ic('graphique') }} Rapport global</b><small>Situation du jour : stocks, alertes, lots à surveiller, commandes, cumul depuis le début.</small>
 <div class="boutons" style="margin-top:34px"><button>PDF</button><button class="secondaire" formaction="{{ url_for('rapport_excel', genre='global') }}">Excel</button></div></div></form>
 </div>
 <h2 id="archives">Archives des rapports mensuels</h2>
-<input class="recherche" data-filtre="t-archives" placeholder="🔍 Rechercher (mois, année…)">
+<input class="recherche" data-filtre="t-archives" placeholder="Rechercher (mois, année…)">
 <table id="t-archives"><tr><th>Période</th><th>Rapport</th><th>Généré le</th><th>Origine</th><th>Par</th><th>Taille</th><th></th></tr>
 {% for r in archives %}<tr><td>{{ r.periode }}</td><td>{{ r.titre }}</td><td>{{ r.date|dt_fr }}</td>
 <td>{% if r.origine == 'auto' %}<span class="badge b-conforme">Automatique</span>{% else %}<span class="badge b-enregistrée">Manuel</span>{% endif %}</td>
 <td>{{ r.username or 'système' }}</td><td>{{ (r.taille / 1024)|round(0)|int }} Ko</td>
-<td><a href="{{ url_for('rapport_archive_telecharger', rid=r.id) }}">📄 Télécharger</a>
+<td><a href="{{ url_for('rapport_archive_telecharger', rid=r.id) }}">{{ ic('fichier') }} Télécharger</a>
 {% if droits.email_config %}<form method="post" action="{{ url_for('rapport_archive_envoyer', rid=r.id) }}" class="en-ligne"
-onsubmit="return confirm('Envoyer ce rapport par e-mail aux abonnés ?')"><button class="petit">✉️ Envoyer</button></form>{% endif %}
+onsubmit="return confirm('Envoyer ce rapport par e-mail aux abonnés ?')"><button class="petit">{{ ic('mail') }} Envoyer</button></form>{% endif %}
 {% if droits.supprimer %}<form method="post" action="{{ url_for('rapport_archive_supprimer', rid=r.id) }}" class="en-ligne"
 onsubmit='return confirm({{ ("Supprimer le rapport « " ~ r.titre ~ " » de l'archive ?")|tojson }})'><button class="petit danger">Supprimer</button></form>{% endif %}</td></tr>
 {% else %}<tr><td colspan="7">Aucun rapport archivé pour l'instant. Le rapport d'un mois est archivé automatiquement dès le mois suivant.</td></tr>{% endfor %}
@@ -6159,7 +6353,7 @@ onsubmit='return confirm({{ ("Supprimer le rapport « " ~ r.titre ~ " » de l'ar
 
 EMAIL_PARAMETRES = """{% extends 'base.html' %}{% block content %}
 <h1>Notifications par e-mail</h1>
-<p><a href="{{ url_for('utilisateurs') }}">← Utilisateurs</a></p>
+<p><a href="{{ url_for('utilisateurs') }}">{{ ic('gauche') }} Utilisateurs</a></p>
 {% if not pret %}<div class="flash warning">Les e-mails sont <b>désactivés</b> ou incomplets : renseignez le serveur d'envoi ci-dessous et cochez « Activer ».</div>
 {% else %}<div class="flash success">L'envoi d'e-mails est <b>actif</b> : alerte quotidienne et rapports mensuels.</div>{% endif %}
 <form class="card" method="post">
