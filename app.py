@@ -4667,53 +4667,85 @@ html{scroll-behavior:smooth}
 body{font-family:var(--police);font-size:15px;line-height:1.5;margin:0;background:var(--fond);color:var(--texte);min-height:100vh;position:relative;display:flow-root;-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
 background:url('{{ url_for("static", filename="fond.png") }}') center 58%/min(52vw,560px) no-repeat;opacity:.045}
-main,.topbar,.pied{position:relative;z-index:1}
+main,.pied{position:relative;z-index:1}
 a{color:var(--lien,var(--vert-fonce));text-underline-offset:3px}
 a:hover{color:var(--lien-survol,var(--vert-nuit))}
 ::selection{background:#cfe6bd}
 
-/* ------------------------------------------------ Menu latéral */
-body.avec-menu{padding-left:var(--menu)}
-.sidebar{position:fixed;z-index:50;top:0;left:0;bottom:0;width:var(--menu);display:flex;flex-direction:column;
-background:linear-gradient(185deg,#1a4a0c 0%,#123307 55%,#0c2405 100%);color:#e8f1e1;box-shadow:2px 0 14px rgba(0,0,0,.12)}
-.sidebar .brand{display:flex;align-items:center;gap:12px;padding:16px 18px;text-decoration:none;color:#fff;border-bottom:1px solid rgba(255,255,255,.09)}
-.sidebar .brand img{height:42px;width:auto;background:#fff;border-radius:10px;padding:3px 5px}
-.sidebar .brand b{display:block;font-size:18px;letter-spacing:.4px;line-height:1.1}
-.sidebar .brand small{display:block;font-size:11.5px;color:#b6cda6;letter-spacing:.3px}
-.sidebar .liens{flex:1;overflow-y:auto;padding:8px 10px 18px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
-.sidebar .groupe{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:#8fae7c;padding:16px 10px 6px}
-.sidebar .liens a{display:flex;align-items:center;gap:11px;padding:9px 11px;margin:1px 0;border-radius:9px;color:#dfe9d7;text-decoration:none;font-size:14px;font-weight:500;transition:background .15s,color .15s}
-.sidebar .liens a .i{width:22px;text-align:center;font-size:16px;flex:none}
-.sidebar .liens a:hover{background:rgba(255,255,255,.08);color:#fff}
-.sidebar .liens a.actif{position:relative;background:linear-gradient(90deg,var(--vert) 0%,#2f7d15 100%);color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(0,0,0,.25)}
-.sidebar .liens a.actif::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--or)}
-.sidebar .pastille-nb{margin-left:auto;background:#e8920c;color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;padding:0 6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
-.sidebar .bas-menu{padding:12px 18px;font-size:11.5px;color:#8fae7c;border-top:1px solid rgba(255,255,255,.09)}
-.voile{display:none}
 
-/* ------------------------------------------------ Barre du haut */
-.topbar{position:sticky;top:0;z-index:40;height:62px;display:flex;align-items:center;gap:14px;padding:0 28px;
-background:var(--verre);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--bord)}
-.topbar .jour{color:var(--texte-2);font-size:13.5px}
-.topbar .jour b{color:var(--texte);font-weight:600}
-.topbar .outils{margin-left:auto;display:flex;align-items:center;gap:8px}
-.icone-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;color:var(--texte-2);text-decoration:none;font-size:18px;transition:background .15s}
-.icone-btn:hover{background:var(--vert-clair);color:var(--vert-nuit)}
-.icone-btn .nb{position:absolute;top:3px;right:2px;background:var(--rouge);color:#fff;font-size:10.5px;font-weight:700;min-width:18px;height:18px;border-radius:9px;padding:0 5px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
-button.burger{display:none;background:transparent;color:var(--vert-nuit);border:1px solid var(--bord-fort);width:40px;height:40px;padding:0;font-size:20px;border-radius:10px;box-shadow:none}
-button.burger:hover{background:var(--vert-clair);color:var(--vert-nuit)}
+
+/* ------------------------------------------------ Barre de navigation du haut */
+.entete-app{position:sticky;top:0;z-index:50;background:#10300a;color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.entete-app .entete-barre{max-width:1340px;margin:0 auto;height:62px;padding:0 28px;display:flex;align-items:center;gap:20px}
+.entete-app .brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;flex:none}
+.entete-app .brand img{height:38px;width:auto;background:#fff;border-radius:8px;padding:2px 4px}
+.entete-app .brand b{display:block;font-size:17px;letter-spacing:.3px;line-height:1.1}
+.entete-app .brand small{display:block;font-size:11px;color:#a9c49a}
+.nav-principale{display:flex;align-items:center;gap:2px;height:100%}
+.nav-principale .groupe{position:relative;height:100%;display:flex;align-items:center}
+.entete-app .groupe-titre{position:relative;display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 12px;background:transparent;color:#d3e2ca;border:0;box-shadow:none;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap}
+.entete-app .groupe-titre:hover,.entete-app .groupe.ouvert>.groupe-titre{background:rgba(255,255,255,.09);color:#fff}
+.entete-app .groupe-titre .ic{width:17px;height:17px;color:#93ad85}
+.entete-app .groupe-titre .fl{width:14px;height:14px;opacity:.7;transition:transform .15s}
+.entete-app .groupe.ouvert>.groupe-titre .fl{transform:rotate(180deg)}
+.entete-app .groupe.actif>.groupe-titre{color:#fff}
+.entete-app .groupe.actif>.groupe-titre .ic:not(.fl){color:var(--or)}
+.entete-app .groupe.actif>.groupe-titre::after{content:"";position:absolute;left:12px;right:12px;bottom:-11px;height:3px;border-radius:3px 3px 0 0;background:var(--or)}
+.deroulant{display:none;position:absolute;top:calc(100% - 6px);left:0;min-width:240px;background:var(--surface);border:1px solid var(--bord);border-radius:12px;box-shadow:var(--ombre-forte);padding:6px;z-index:60}
+.groupe.ouvert>.deroulant{display:block}
+@media(hover:hover) and (min-width:1001px){.nav-principale .groupe:hover>.deroulant{display:block}}
+.deroulant a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:var(--texte);text-decoration:none;font-size:14px;font-weight:500}
+.deroulant a .i{display:inline-flex;color:var(--texte-3)}
+.deroulant a:hover{background:var(--vert-pale);color:var(--texte)}
+.deroulant a.actif{background:var(--vert-clair);color:var(--titre);font-weight:600}
+.deroulant a.actif .i{color:var(--vert)}
+.pastille-nb{margin-left:auto;background:var(--or);color:#1b1300;font-size:11px;font-weight:700;min-width:20px;height:20px;padding:0 6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+.groupe-titre .pastille-nb{margin-left:2px}
+.entete-app .outils{margin-left:auto;display:flex;align-items:center;gap:6px}
+.entete-app .jour{display:inline-flex;align-items:center;gap:6px;color:#a9c49a;font-size:12.5px;margin-right:6px;white-space:nowrap}
+.entete-app .jour .ic{width:15px;height:15px}
+.icone-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;text-decoration:none;font-size:0;transition:background .15s}
+.entete-app .icone-btn{color:#d3e2ca;background:transparent}
+.entete-app .icone-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+.icone-btn .ic{width:19px;height:19px}
+.icone-btn .nb{position:absolute;top:3px;right:2px;background:var(--rouge);color:#fff;font-size:10.5px;font-weight:700;min-width:18px;height:18px;border-radius:9px;padding:0 5px;display:flex;align-items:center;justify-content:center;border:2px solid #10300a}
+.entete-app button.burger{display:none;background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;width:40px;height:40px;padding:0;border-radius:10px;box-shadow:none}
+.entete-app button.burger .ic{width:20px;height:20px}
 details.profil{position:relative}
-details.profil summary{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 10px 4px 4px;border-radius:24px;border:1px solid var(--bord);background:var(--surface);transition:box-shadow .15s}
+details.profil summary{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 10px 4px 4px;border-radius:24px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;transition:box-shadow .15s}
 details.profil summary::-webkit-details-marker{display:none}
-details.profil summary:hover,details.profil[open] summary{box-shadow:0 0 0 3px var(--vert-clair)}
-.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--vert),var(--vert-nuit));color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;text-transform:uppercase}
-.profil .qui{line-height:1.15}.profil .qui b{display:block;font-size:13.5px}.profil .qui small{font-size:11.5px;color:var(--texte-2)}
-.profil .chevron{font-size:10px;color:var(--texte-3)}
-.profil .menu{position:absolute;right:0;top:calc(100% + 8px);min-width:220px;background:var(--surface);border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre-forte);padding:6px;z-index:60}
+details.profil summary:hover,details.profil[open] summary{box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#f2c14e,#c8890a);color:#1b1300;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;text-transform:uppercase}
+.profil .qui{line-height:1.15;white-space:nowrap}.profil .qui b{display:block;font-size:13px}.profil .qui small{font-size:11px;color:#a9c49a}
+.profil .chevron .ic{width:14px;height:14px;color:#a9c49a}
+.profil .menu{position:absolute;right:0;top:calc(100% + 10px);min-width:220px;background:var(--surface);border:1px solid var(--bord);border-radius:var(--rayon);box-shadow:var(--ombre-forte);padding:6px;z-index:60}
 .profil .menu a{display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:8px;color:var(--texte);text-decoration:none;font-size:14px}
 .profil .menu a:hover{background:var(--vert-pale)}
+.profil .menu a .ic{color:var(--texte-3)}
 .profil .menu hr{border:0;border-top:1px solid var(--bord);margin:6px 4px}
-.profil .menu a.sortie{color:var(--rouge)}
+.profil .menu a.sortie,.profil .menu a.sortie .ic{color:var(--rouge)}
+html[data-theme=sombre] .entete-app,html[data-theme=sombre] .entete-app .nav-principale{background:#0c1f08}
+@media(max-width:1300px){.entete-app .jour{display:none}.entete-app .entete-barre{gap:12px}.entete-app .groupe-titre{padding:0 9px}}
+@media(max-width:1000px){
+.entete-app .entete-barre{padding:0 14px}
+.entete-app button.burger{display:inline-flex}
+.nav-principale{display:none;position:absolute;top:62px;left:0;right:0;height:auto;max-height:calc(100vh - 62px);overflow-y:auto;flex-direction:column;align-items:stretch;gap:0;background:#10300a;padding:6px 14px 18px;border-top:1px solid rgba(255,255,255,.1);box-shadow:0 12px 24px rgba(0,0,0,.25)}
+.entete-app.ouvert .nav-principale{display:flex}
+.nav-principale .groupe{height:auto;flex-direction:column;align-items:stretch}
+.entete-app .groupe-titre{height:auto;justify-content:flex-start;padding:14px 4px 6px;font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:#8fae7c;cursor:default;background:transparent!important}
+.entete-app .groupe-titre .ic,.entete-app .groupe.actif>.groupe-titre::after{display:none}
+.entete-app a.groupe-titre{cursor:pointer;text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;color:#d3e2ca;padding:11px 12px;margin-top:8px;border-top:1px solid rgba(255,255,255,.08);border-radius:0}
+.entete-app a.groupe-titre .ic:not(.fl){display:inline-block;color:#93ad85}
+.deroulant{display:block;position:static;min-width:0;background:transparent;border:0;box-shadow:none;padding:0}
+.deroulant a{color:#d3e2ca;padding:11px 12px}
+.deroulant a .i{color:#93ad85}
+.deroulant a:hover{background:rgba(255,255,255,.06);color:#fff}
+.deroulant a.actif{background:rgba(255,255,255,.1);color:#fff}
+.deroulant a.actif .i{color:var(--or)}
+.profil .qui,.profil .chevron{display:none}
+details.profil summary{padding:3px}
+}
+@media(max-width:600px){.entete-app .brand small{display:none}}
 
 /* ------------------------------------------------ Contenu */
 main{max-width:1340px;margin:26px auto 10px;padding:0 28px}
@@ -4958,23 +4990,14 @@ body.login main{max-width:1040px}
 
 /* ------------------------------------------------ Responsive */
 @media(max-width:1000px){
-body.avec-menu{padding-left:0}
-.sidebar{transform:translateX(-100%);transition:transform .22s ease;width:min(86vw,var(--menu))}
-body.menu-ouvert .sidebar{transform:none}
-body.menu-ouvert .voile{display:block;position:fixed;inset:0;z-index:45;background:rgba(10,25,5,.45)}
-body.menu-ouvert{overflow:hidden}
-button.burger{display:inline-flex}
-.topbar{padding:0 14px}
 main{padding:0 14px;margin-top:18px}
-.profil .qui,.profil .chevron{display:none}
-details.profil summary{padding:3px}
 }
-@media(max-width:600px){.topbar .jour{display:none}h1{font-size:22px}.cartes{grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){h1{font-size:22px}.cartes{grid-template-columns:1fr 1fr;gap:10px}
 .carte{padding:12px;gap:10px;flex-direction:column;align-items:flex-start}.carte .ico{width:40px;height:40px;font-size:20px}.carte b{font-size:21px}.carte .fleche{display:none}
 .rapport-carte{grid-column:1/-1}}
 
 /* ------------------------------------------------ Impression */
-@media print{.sidebar,.topbar,.voile,.no-print,.flash,.flashes,.pied,#inactif{display:none!important}
+@media print{.entete-app,.no-print,.flash,.flashes,.pied,#inactif{display:none!important}
 body,body.avec-menu{background:#fff!important;padding:0!important}body::before{display:none!important}
 main{max-width:none;margin:0;padding:0}
 table,.table-wrap{box-shadow:none!important}
@@ -5059,33 +5082,7 @@ a .ic{margin-right:2px}
 body:not(.login)::before{display:none}
 body{font-size:14.5px}
 /* Menu latéral : sobre, icônes au trait, rubrique active soulignée d'or */
-.sidebar{background:#10300a;box-shadow:none;border-right:1px solid rgba(0,0,0,.25)}
-.sidebar .brand{padding:18px 18px 16px}
-.sidebar .groupe{color:#7f9c6e;font-size:10.5px;letter-spacing:1.2px;padding:18px 12px 6px}
-.sidebar .liens a{color:#c9d8c0;font-weight:500;padding:8px 12px;gap:12px}
-.sidebar .liens a .i{width:auto;display:inline-flex;color:#93ad85}
-.sidebar .liens a .ic{width:18px;height:18px}
-.sidebar .liens a:hover{background:rgba(255,255,255,.06);color:#fff}
-.sidebar .liens a:hover .i{color:#d5e8c8}
-.sidebar .liens a.actif{background:rgba(255,255,255,.1);box-shadow:none;color:#fff;font-weight:600}
-.sidebar .liens a.actif .i{color:var(--or)}
-.sidebar .liens a.actif::before{left:-10px;top:7px;bottom:7px;width:3px}
-.sidebar .pastille-nb{background:var(--or);color:#1b1300}
 /* Barre du haut : fil d'Ariane */
-.topbar{height:58px}
-.ariane{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--texte-3);min-width:0}
-.ariane .ic{width:14px;height:14px}
-.ariane b{color:var(--texte);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.topbar .jour{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--texte-3);margin-right:6px}
-.topbar .jour .ic{width:15px;height:15px}
-.icone-btn{font-size:0;color:var(--texte-2)}
-.icone-btn .ic{width:19px;height:19px}
-.icone-btn .nb{font-size:10.5px}
-button.burger{font-size:0}
-button.burger .ic{width:20px;height:20px}
-.profil .chevron .ic{width:14px;height:14px;color:var(--texte-3)}
-.profil .menu a .ic{color:var(--texte-3)}
-.profil .menu a.sortie .ic{color:var(--rouge)}
 /* Titres de page : icône de rubrique dans un pavé teinté */
 main>h1:first-of-type::before,.entete-page h1::before{content:"";background:var(--ico-page) center/22px no-repeat,var(--vert-clair);border:0;box-shadow:none;width:42px;height:42px;border-radius:11px}
 main>h1:first-of-type{font-size:24px;padding-bottom:14px}
@@ -5143,7 +5140,6 @@ p>a:only-child{display:inline-flex;align-items:center;gap:6px;font-weight:600;te
 p>a:only-child:hover{text-decoration:underline}
 html[data-theme=sombre] main>h1:first-of-type::before,html[data-theme=sombre] .entete-page h1::before{background:var(--ico-page-sombre) center/22px no-repeat,var(--vert-clair)}
 html[data-theme=sombre] th{background:#1b261b}
-html[data-theme=sombre] .sidebar{background:#0c1f08}
 html[data-theme=sombre] .c-orange{border-color:#5a4615}html[data-theme=sombre] .c-rouge{border-color:#5a2626}
 html[data-theme=sombre] button,html[data-theme=sombre] .btn{background:#2f7d15}
 html[data-theme=sombre] button:hover,html[data-theme=sombre] .btn:hover{background:#3a9419}
@@ -5157,38 +5153,38 @@ html[data-theme=sombre] .theme-btn,html[data-theme=sombre] .flash .fermer,html[d
 <body class="{% if session.user %}avec-menu {% endif %}{% block bodyclass %}{% endblock %}">
 {% macro lien(url, actif, ico, texte, nb=0) %}<a href="{{ url }}"{% if actif %} class="actif" aria-current="page"{% endif %}><span class="i">{{ ic(ico) }}</span><span>{{ texte }}</span>{% if nb %}<span class="pastille-nb">{{ nb }}</span>{% endif %}</a>{% endmacro %}
 {% if session.user %}{% set r = session.user.role %}{% set ep = request.endpoint or '' %}
-<aside class="sidebar" id="menu" aria-label="Menu principal">
+{% macro groupe(titre, ico, actif) %}<div class="groupe{% if actif %} actif{% endif %}"><button type="button" class="groupe-titre" aria-expanded="false">{{ ic(ico) }}<span>{{ titre }}</span><svg class="ic fl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="deroulant">{{ caller() }}</div></div>{% endmacro %}
+<header class="entete-app" id="entete">
+<div class="entete-barre">
 <a class="brand" href="{{ url_for('index') }}"><img src="{{ url_for('static', filename='logo.png') }}" alt="ISRA"><span><b>UPVac</b><small>Gestion des vaccins · ISRA</small></span></a>
-<nav class="liens">
-<div class="groupe">Pilotage</div>
+<nav class="nav-principale" id="menu" aria-label="Menu principal">
+{% call groupe('Pilotage', 'accueil', ep == 'index' or ep.startswith('rapport')) %}
 {{ lien(url_for('index'), ep == 'index', 'accueil', 'Tableau de bord') }}
 {% if droits.rapports_voir %}{{ lien(url_for('rapports'), ep.startswith('rapport'), 'graphique', 'Rapports') }}{% endif %}
-<div class="groupe">Stock</div>
+{% endcall %}
+{% call groupe('Stock', 'colis', ep.startswith('lot') or ep.startswith('vaccin') or ep.startswith('mouvement') or ep.startswith('inventaire') or ep.startswith('article')) %}
 {{ lien(url_for('lots'), ep.startswith('lot') or ep.startswith('vaccin'), 'seringue', 'Vaccins & lots') }}
 {% if droits.mouvements_voir %}{{ lien(url_for('mouvements'), ep.startswith('mouvement'), 'echange', 'Entrées / sorties') }}{% endif %}
 {% if droits.inventaire_voir %}{{ lien(url_for('inventaires'), ep.startswith('inventaire'), 'inventaire', 'Inventaire') }}{% endif %}
 {% if droits.articles_voir %}{{ lien(url_for('articles'), ep.startswith('article'), 'outils', 'Articles') }}{% endif %}
-{% if droits.clients_voir or droits.commandes_voir or droits.ventes_voir or droits.ventes_saisir or droits.factures_voir %}<div class="groupe">Commercial</div>{% endif %}
+{% endcall %}
+{% if droits.clients_voir or droits.commandes_voir or droits.ventes_voir or droits.ventes_saisir or droits.factures_voir %}
+{% call groupe('Commercial', 'panier', ep.startswith('caisse') or ep.startswith('commande') or ep.startswith('vente') or ep.startswith('facture') or ep.startswith('client')) %}
 {% if droits.ventes_saisir %}{{ lien(url_for('caisse'), ep.startswith('caisse'), 'panier', 'Caisse') }}{% endif %}
 {% if droits.commandes_voir %}{{ lien(url_for('commandes'), ep.startswith('commande'), 'recu', 'Commandes') }}{% endif %}
 {% if droits.ventes_voir %}{{ lien(url_for('ventes'), ep.startswith('vente'), 'billets', 'Ventes') }}{% endif %}
 {% if droits.factures_voir %}{{ lien(url_for('factures'), ep.startswith('facture'), 'fichier', 'Factures') }}{% endif %}
 {% if droits.clients_voir %}{{ lien(url_for('clients'), ep.startswith('client'), 'utilisateurs', 'Clients') }}{% endif %}
-<div class="groupe">Communication</div>
-{{ lien(url_for('messages'), ep.startswith('message'), 'mail', 'Messagerie', nb_non_lus) }}
-{% if droits.referentiels_voir or droits.utilisateurs or droits.audit or droits.reinitialiser %}<div class="groupe">Administration</div>{% endif %}
+{% endcall %}{% endif %}
+<div class="groupe{% if ep.startswith('message') %} actif{% endif %}"><a class="groupe-titre" href="{{ url_for('messages') }}">{{ ic('mail') }}<span>Messagerie</span>{% if nb_non_lus %}<span class="pastille-nb">{{ nb_non_lus }}</span>{% endif %}</a></div>
+{% if droits.referentiels_voir or droits.utilisateurs or droits.audit or droits.reinitialiser %}
+{% call groupe('Administration', 'bouclier', ep.startswith('referentiel') or ep.startswith('ref_') or ep.startswith('utilisateur') or ep.startswith('email_') or ep == 'journal' or ep.startswith('donnees')) %}
 {% if droits.referentiels_voir %}{{ lien(url_for('referentiels'), ep.startswith('referentiel') or ep.startswith('ref_'), 'dossier', 'Référentiels') }}{% endif %}
 {% if droits.utilisateurs %}{{ lien(url_for('utilisateurs'), ep.startswith('utilisateur') or ep.startswith('email_'), 'bouclier', 'Utilisateurs') }}{% endif %}
 {% if droits.audit %}{{ lien(url_for('journal'), ep == 'journal', 'historique', 'Audit') }}{% endif %}
 {% if droits.reinitialiser %}{{ lien(url_for('donnees_essai'), ep.startswith('donnees'), 'fiole', "Données d'essai") }}{% endif %}
+{% endcall %}{% endif %}
 </nav>
-<div class="bas-menu">© {{ annee }} UPVac · ISRA</div>
-</aside>
-<div class="voile" onclick="document.body.classList.remove('menu-ouvert')"></div>
-<header class="topbar">
-<button type="button" class="burger" aria-label="Ouvrir le menu" aria-controls="menu" aria-expanded="false"
-onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('aria-expanded',o)">{{ ic('menu') }}</button>
-<nav class="ariane" aria-label="Fil d'Ariane">{% if rubrique.section %}<span>{{ rubrique.section }}</span>{{ ic('chevron-droite') }}{% endif %}<b>{{ rubrique.page or 'UPVac' }}</b></nav>
 <div class="outils">
 <span class="jour">{{ ic('calendrier') }} {{ jour_fr }}</span>
 <button type="button" class="icone-btn theme-btn" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">{{ ic('lune') }}</span><span class="sombre-ico">{{ ic('soleil') }}</span></button>
@@ -5199,7 +5195,9 @@ onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('
 <a href="{{ url_for('mot_de_passe') }}">{{ ic('cle') }} Mot de passe</a>
 <hr><a class="sortie" href="{{ url_for('logout') }}">{{ ic('sortie') }} Déconnexion</a>
 </div></details>
-</div></header>{% else %}<button type="button" class="icone-btn theme-btn login-theme" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">{{ ic('lune') }}</span><span class="sombre-ico">{{ ic('soleil') }}</span></button>{% endif %}
+<button type="button" class="burger" aria-label="Ouvrir le menu" aria-controls="menu" aria-expanded="false"
+onclick="var o=document.getElementById('entete').classList.toggle('ouvert');this.setAttribute('aria-expanded',o)">{{ ic('menu') }}</button>
+</div></div></header>{% else %}<button type="button" class="icone-btn theme-btn login-theme" onclick="basculerTheme()" title="Mode clair / sombre" aria-label="Basculer le mode clair ou sombre"><span class="clair-ico">{{ ic('lune') }}</span><span class="sombre-ico">{{ ic('soleil') }}</span></button>{% endif %}
 <main style="{{ style_page }}">{% with msgs = get_flashed_messages(with_categories=true) %}{% if msgs %}<div class="flashes no-print" role="status">{% for cat, m in msgs %}
 <div class="flash {{ cat }}"><span>{{ m }}</span><button type="button" class="fermer" aria-label="Fermer" onclick="this.parentNode.remove()">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
 {% block content %}{% endblock %}</main>
@@ -5229,19 +5227,25 @@ onclick="var o=document.body.classList.toggle('menu-ouvert');this.setAttribute('
     setTimeout(function(){f.style.transition='opacity .4s';f.style.opacity='0';setTimeout(function(){f.remove();},450);},6000);
   });
   // fermeture du menu mobile et du menu profil
+  // menus déroulants de la barre du haut : ouverture au clic (souris ou écran tactile)
+  var groupes=document.querySelectorAll('.nav-principale .groupe');
+  function fermerTout(sauf){groupes.forEach(function(g){if(g!==sauf){g.classList.remove('ouvert');var b=g.querySelector('button.groupe-titre');if(b){b.setAttribute('aria-expanded','false');}}});}
+  document.querySelectorAll('.nav-principale button.groupe-titre').forEach(function(b){
+    b.addEventListener('click',function(e){e.stopPropagation();var g=b.parentNode;fermerTout(g);
+      var o=g.classList.toggle('ouvert');b.setAttribute('aria-expanded',o);});
+  });
   document.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){document.body.classList.remove('menu-ouvert');
+    if(e.key==='Escape'){fermerTout(null);var t=document.getElementById('entete');if(t){t.classList.remove('ouvert');}
       document.querySelectorAll('details.profil[open]').forEach(function(d){d.removeAttribute('open');});}
   });
   document.addEventListener('click',function(e){
+    if(!e.target.closest('.nav-principale')){fermerTout(null);}
     document.querySelectorAll('details.profil[open]').forEach(function(d){if(!d.contains(e.target)){d.removeAttribute('open');}});
   });
   window.basculerTheme=function(){
     var h=document.documentElement, s=h.getAttribute('data-theme')==='sombre'?'clair':'sombre';
     h.setAttribute('data-theme',s); try{localStorage.setItem('upvac_theme',s);}catch(e){}
   };
-  var actif=document.querySelector('.sidebar .liens a.actif');
-  if(actif&&actif.scrollIntoView){actif.scrollIntoView({block:'nearest'});}
 })();
 </script>
 {% if session.user %}
