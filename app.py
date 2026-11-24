@@ -4945,6 +4945,14 @@ input.recherche{width:100%;max-width:400px;margin:4px 0 12px;padding-left:12px}
 .circuit{max-width:820px;margin:0 auto 14px}
 .panneau-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0 4px}
 .panneau-actions form{margin:0}
+.coord-client{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:14px 0 26px}
+.coord{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--bord);border-radius:14px;padding:14px 16px;box-shadow:var(--ombre)}
+.coord>.ic{width:22px;height:22px;flex:none;color:var(--vert)}
+.coord span{display:flex;flex-direction:column;min-width:0}
+.coord small{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--texte-3)}
+.coord b{font-size:15.5px;color:var(--titre);overflow-wrap:anywhere}
+.coord.adresse{border-color:var(--vert);background:var(--vert-pale)}
+.coord.adresse b{font-size:18px}
 .renvoi{display:flex;gap:6px;flex-wrap:wrap}.renvoi input{min-width:260px}
 .attente{margin:0;color:#7a5200}
 .alerte-circuit{background:#fdecec;padding:10px 14px;border-radius:8px;margin:0;border-left:4px solid var(--rouge)}
@@ -5570,15 +5578,20 @@ onsubmit='return confirm({{ ("Supprimer définitivement le client « " ~ c.nom ~
 CLIENT_FICHE = """{% extends 'base.html' %}{% block content %}
 <h1>{{ c.nom }}</h1>
 <p><a href="{{ url_for('clients') }}">{{ ic('gauche') }} Clients</a></p>
-{% if droits.clients_gerer %}<form class="card" method="post">
+<div class="coord-client">
+<div class="coord adresse">{{ ic('epingle') }}<span><small>Adresse</small><b>{{ c.adresse or 'Non renseignée' }}</b></span></div>
+<div class="coord">{{ ic('utilisateur') }}<span><small>Téléphone</small><b>{{ c.telephone or '—' }}</b></span></div>
+<div class="coord">{{ ic('mail') }}<span><small>E-mail</small><b>{{ c.email or '—' }}</b></span></div>
+<div class="coord">{{ ic('etiquette') }}<span><small>Profil · Type</small><b>{{ c.nature or '—' }} · {{ c.type or '—' }}</b></span></div>
+</div>
+{% if droits.clients_gerer %}<h2>Modifier le client</h2><form class="card" method="post">
 <label>Nom<input name="nom" required maxlength="120" value="{{ c.nom }}"></label>
 <label>Profil<select name="nature" required><option value="">—</option>{% for x in ('entreprise', 'particulier') %}<option {% if c.nature == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
 <label>Type<select name="type"><option value="">—</option>{% for x in ('éleveur', 'vétérinaire', 'structure') %}<option {% if c.type == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
 <label>Téléphone<input name="telephone" maxlength="40" value="{{ c.telephone or '' }}"></label>
 <label>E-mail<input name="email" type="email" maxlength="120" value="{{ c.email or '' }}"></label>
 <label>Adresse<input name="adresse" maxlength="200" value="{{ c.adresse or '' }}"></label>
-<button>Enregistrer</button></form>
-{% else %}<p>Profil : <b>{{ c.nature or '—' }}</b> · Type : <b>{{ c.type or '—' }}</b> · Téléphone : <b>{{ c.telephone or '—' }}</b> · E-mail : <b>{{ c.email or '—' }}</b> · Adresse : <b>{{ c.adresse or '—' }}</b></p>{% endif %}
+<button>Enregistrer</button></form>{% endif %}
 <h2>Commandes</h2>
 <table><tr><th>N°</th><th>Date</th><th>Statut</th><th>Total</th></tr>
 {% for o in commandes %}<tr><td><a href="{{ url_for('commande_detail', cmd_id=o.id) }}">{{ o.numero }}</a></td><td>{{ o.date|replace('T', ' ') }}</td>
