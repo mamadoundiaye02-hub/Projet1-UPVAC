@@ -4457,7 +4457,7 @@ def caisse():
     catalogue = [{"nom": v["nom"], "prix": v["prix_unitaire"], "stock": vendable.get(v["id"], 0)}
                  for v in query("SELECT id, nom, prix_unitaire FROM vaccins WHERE actif=1 ORDER BY nom COLLATE NOCASE")]
     return render_template("caisse.html", mode=mode, saisie=saisie, catalogue=catalogue,
-                           clients=query("SELECT nom FROM clients ORDER BY nom COLLATE NOCASE"),
+                           clients=query("SELECT nom, adresse, telephone FROM clients ORDER BY nom COLLATE NOCASE"),
                            MODES_PAIEMENT=MODES_PAIEMENT,
                            echeance_defaut=(date.today() + timedelta(days=30)).isoformat())
 
@@ -5628,7 +5628,7 @@ VENTES = """{% extends 'base.html' %}{% block content %}
 CAISSE = r"""{% extends 'base.html' %}{% block content %}
 <h1>Caisse</h1>
 <datalist id="liste-vaccins">{% for v in catalogue %}<option value="{{ v.nom }}">{% endfor %}</datalist>
-<datalist id="liste-clients">{% for c in clients %}<option value="{{ c.nom }}">{% endfor %}</datalist>
+<datalist id="liste-clients">{% for c in clients %}<option value="{{ c.nom }}" data-adresse="{{ c.adresse or '' }}" data-tel="{{ c.telephone or '' }}">{% endfor %}</datalist>
 <div class="onglets">
 <a href="{{ url_for('caisse', mode='comptant') }}" class="{{ 'actif' if mode == 'comptant' }}">Vente au comptant</a>
 <a href="{{ url_for('caisse', mode='terme') }}" class="{{ 'actif' if mode == 'terme' }}">Vente à terme</a></div>
@@ -5647,6 +5647,25 @@ CAISSE = r"""{% extends 'base.html' %}{% block content %}
 <label>Nom du client<input name="client_nom" list="liste-clients" maxlength="120" autocomplete="off" {% if mode == 'terme' %}required{% endif %} value="{{ saisie.client_nom if saisie else '' }}" placeholder="{{ 'Nom du client' if mode == 'terme' else 'Client comptoir' }}"></label>
 <label>Adresse<input name="client_adresse" maxlength="200" value="{{ saisie.client_adresse if saisie else '' }}"></label>
 {% if mode == 'terme' %}<label>Téléphone<input name="client_tel" maxlength="40" value="{{ saisie.client_tel if saisie else '' }}"></label>{% endif %}
+<script>
+(function(){
+  /* client connu : son adresse (et son téléphone) se remplissent tout seuls */
+  var nom=document.querySelector('input[name=client_nom]');
+  var champs=[['adresse',document.querySelector('input[name=client_adresse]')],['tel',document.querySelector('input[name=client_tel]')]];
+  if(!nom){return;}
+  champs.forEach(function(c){if(c[1]){c[1].addEventListener('input',function(){c[1].dataset.auto='';});}});
+  function remplir(){
+    var v=nom.value.trim().toLowerCase(), o=null;
+    document.querySelectorAll('#liste-clients option').forEach(function(x){if(x.value.trim().toLowerCase()===v){o=x;}});
+    champs.forEach(function(c){
+      var ch=c[1]; if(!ch){return;}
+      if(o){if(!ch.value||ch.dataset.auto==='1'){ch.value=o.dataset[c[0]]||'';ch.dataset.auto='1';}}
+      else if(ch.dataset.auto==='1'){ch.value='';ch.dataset.auto='';}
+    });
+  }
+  nom.addEventListener('input',remplir); nom.addEventListener('change',remplir);
+})();
+</script>
 </div></fieldset>
 <fieldset><legend>Vaccins vendus</legend>
 <table class="table-lignes"><thead><tr><th>Nom du vaccin</th><th>Quantité</th><th>Prix unitaire ({{ devise }})</th><th>Montant</th><th></th></tr></thead>
