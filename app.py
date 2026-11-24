@@ -644,9 +644,9 @@ app.jinja_env.globals["ic"] = ic
 RUBRIQUES = (("index", "accueil", "Pilotage", "Tableau de bord"), ("rapport", "graphique", "Pilotage", "Rapports"),
              ("lot", "seringue", "Stock", "Vaccins & lots"), ("vaccin", "seringue", "Stock", "Catalogue des vaccins"),
              ("mouvement", "echange", "Stock", "Entrées / sorties"), ("inventaire", "inventaire", "Stock", "Inventaire"),
-             ("article", "outils", "Stock", "Articles"), ("caisse", "panier", "Commercial", "Caisse"),
-             ("commande", "recu", "Commercial", "Commandes"), ("vente", "billets", "Commercial", "Ventes"),
-             ("facture", "fichier", "Commercial", "Factures"), ("client", "utilisateurs", "Commercial", "Clients"),
+             ("article", "outils", "Stock", "Articles"), ("caisse", "panier", "Vente", "Caisse"),
+             ("commande", "recu", "Vente", "Commandes"), ("vente", "billets", "Vente", "Ventes"),
+             ("facture", "fichier", "Vente", "Factures"), ("client", "utilisateurs", "Vente", "Clients"),
              ("message", "mail", "Communication", "Messagerie"), ("referentiel", "dossier", "Administration", "Référentiels"),
              ("ref_", "dossier", "Administration", "Référentiels"), ("utilisateur", "bouclier", "Administration", "Utilisateurs"),
              ("email", "mail", "Administration", "Notifications e-mail"), ("journal", "historique", "Administration", "Audit"),
@@ -5169,7 +5169,7 @@ html[data-theme=sombre] .theme-btn,html[data-theme=sombre] .flash .fermer,html[d
 {% if droits.articles_voir %}{{ lien(url_for('articles'), ep.startswith('article'), 'outils', 'Articles') }}{% endif %}
 {% endcall %}
 {% if droits.clients_voir or droits.commandes_voir or droits.ventes_voir or droits.ventes_saisir or droits.factures_voir %}
-{% call groupe('Commercial', 'panier', ep.startswith('caisse') or ep.startswith('commande') or ep.startswith('vente') or ep.startswith('facture') or ep.startswith('client')) %}
+{% call groupe('Vente', 'panier', ep.startswith('caisse') or ep.startswith('commande') or ep.startswith('vente') or ep.startswith('facture') or ep.startswith('client')) %}
 {% if droits.ventes_saisir %}{{ lien(url_for('caisse'), ep.startswith('caisse'), 'panier', 'Caisse') }}{% endif %}
 {% if droits.commandes_voir %}{{ lien(url_for('commandes'), ep.startswith('commande'), 'recu', 'Commandes') }}{% endif %}
 {% if droits.ventes_voir %}{{ lien(url_for('ventes'), ep.startswith('vente'), 'billets', 'Ventes') }}{% endif %}
