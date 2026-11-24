@@ -5559,8 +5559,8 @@ CLIENTS = """{% extends 'base.html' %}{% block content %}
 <label>Adresse<input name="adresse" maxlength="200"></label>
 <button>Ajouter</button></form>{% endif %}
 <h2>Liste</h2><input class="recherche" data-filtre="t-clients" placeholder="Rechercher un client…">
-<table id="t-clients"><tr><th>Nom</th><th>Profil</th><th>Type</th><th>Téléphone</th><th>Commandes</th><th>Ventes</th>{% if droits.supprimer %}<th>Actions</th>{% endif %}</tr>
-{% for c in clients %}<tr><td><a href="{{ url_for('client_fiche', cid=c.id) }}">{{ c.nom }}</a></td><td>{{ c.nature or '' }}</td><td>{{ c.type or '' }}</td><td>{{ c.telephone or '' }}</td><td>{{ c.nb_commandes }}</td><td>{{ c.nb_ventes }}</td>
+<table id="t-clients"><tr><th>Nom</th><th>Profil</th><th>Type</th><th>Téléphone</th><th>Adresse</th><th>Commandes</th><th>Ventes</th>{% if droits.supprimer %}<th>Actions</th>{% endif %}</tr>
+{% for c in clients %}<tr><td><a href="{{ url_for('client_fiche', cid=c.id) }}">{{ c.nom }}</a></td><td>{{ c.nature or '' }}</td><td>{{ c.type or '' }}</td><td>{{ c.telephone or '' }}</td><td>{{ c.adresse or '' }}</td><td>{{ c.nb_commandes }}</td><td>{{ c.nb_ventes }}</td>
 {% if droits.supprimer %}<td>{% if c.nb_ventes == 0 and c.nb_commandes == 0 %}
 <form method="post" action="{{ url_for('client_supprimer', cid=c.id) }}" class="en-ligne"
 onsubmit='return confirm({{ ("Supprimer définitivement le client « " ~ c.nom ~ " » ?")|tojson }})'><button class="petit danger">Supprimer</button></form>
@@ -5573,7 +5573,7 @@ CLIENT_FICHE = """{% extends 'base.html' %}{% block content %}
 {% if droits.clients_gerer %}<form class="card" method="post">
 <label>Nom<input name="nom" required maxlength="120" value="{{ c.nom }}"></label>
 <label>Profil<select name="nature" required><option value="">—</option>{% for x in ('entreprise', 'particulier') %}<option {% if c.nature == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
-<label>Type<select name="type">{% for x in ('éleveur', 'vétérinaire', 'structure') %}<option {% if c.type == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
+<label>Type<select name="type"><option value="">—</option>{% for x in ('éleveur', 'vétérinaire', 'structure') %}<option {% if c.type == x %}selected{% endif %}>{{ x }}</option>{% endfor %}</select></label>
 <label>Téléphone<input name="telephone" maxlength="40" value="{{ c.telephone or '' }}"></label>
 <label>E-mail<input name="email" type="email" maxlength="120" value="{{ c.email or '' }}"></label>
 <label>Adresse<input name="adresse" maxlength="200" value="{{ c.adresse or '' }}"></label>
